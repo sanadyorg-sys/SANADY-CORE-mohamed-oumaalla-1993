@@ -48,7 +48,7 @@ function move<T>(list: T[], index: number, delta: number) {
 function lessonContentBadge(lesson: Lesson) {
   if (lesson.kind === "video") {
     if (!lesson.video_ref) return <Badge tone="warning">Vidéo manquante</Badge>;
-    return <Badge tone="neutral">{lesson.video_duration_seconds ? formatClock(lesson.video_duration_seconds) : "Vidéo"}{lesson.video_provider === "mux" ? " · Mux" : ""}</Badge>;
+    return <Badge tone="neutral">{lesson.video_duration_seconds ? formatClock(lesson.video_duration_seconds) : "Vidéo"}{lesson.video_provider === "mux" ? " · Mux" : lesson.video_provider === "bunny" ? " · Bunny" : ""}</Badge>;
   }
   if (!lesson.pdf_path) return <Badge tone="warning">Document manquant</Badge>;
   return <Badge tone="neutral">{lesson.pdf_page_count} p.</Badge>;

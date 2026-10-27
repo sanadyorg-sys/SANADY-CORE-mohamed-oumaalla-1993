@@ -5,9 +5,73 @@ import { createClient } from "@/lib/supabase/browser";
 
 const CHUNK_SIZE = 6 * 1024 * 1024; // Required by Supabase resumable uploads.
 
-export interface UploadHandle {
-  promise: Promise<void>;
+export interface UploadHandle<T = void> {
+  promise: Promise<T>;
   abort: () => void;
+}
+
+/** A refusal whose message is meant for the user (e.g. returned by the server). */
+export class UploadRefused extends Error {}
+
+export interface BunnyUploadTicket {
+  videoId: string;
+  libraryId: string;
+  expires: number;
+  signature: string;
+}
+
+/**
+ * Resumable (TUS) upload straight to Bunny Stream. The server first creates
+ * the video and returns a signed ticket for it (the API key stays on the
+ * server); the promise resolves with the Bunny video ID.
+ */
+export function uploadToBunny({
+  file,
+  getTicket,
+  onProgress,
+}: {
+  file: File;
+  getTicket: () => Promise<{ ok: true; ticket: BunnyUploadTicket } | { ok: false; message: string }>;
+  onProgress?: (ratio: number) => void;
+}): UploadHandle<string> {
+  let upload: Upload | null = null;
+  let aborted = false;
+
+  const promise = (async () => {
+    const res = await getTicket();
+    if (!res.ok) throw new UploadRefused(res.message);
+    const { ticket } = res;
+    await new Promise<void>((resolve, reject) => {
+      if (aborted) return reject(new Error("Téléversement annulé."));
+      upload = new Upload(file, {
+        endpoint: "https://video.bunnycdn.com/tusupload",
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        chunkSize: 50 * 1024 * 1024,
+        headers: {
+          AuthorizationSignature: ticket.signature,
+          AuthorizationExpire: String(ticket.expires),
+          VideoId: ticket.videoId,
+          LibraryId: ticket.libraryId,
+        },
+        metadata: { filetype: fileType(file) || "application/octet-stream", title: file.name },
+        // Each attempt targets a new Bunny video: never resume an older one.
+        storeFingerprintForResuming: false,
+        onError: (error) => reject(error),
+        onProgress: (sent, total) => onProgress?.(total ? sent / total : 0),
+        onSuccess: () => resolve(),
+      });
+      upload.start();
+    });
+    return ticket.videoId;
+  })();
+
+  return {
+    promise,
+    abort: () => {
+      aborted = true;
+      void (upload as Upload | null)?.abort(true);
+    },
+  };
 }
 
 /**

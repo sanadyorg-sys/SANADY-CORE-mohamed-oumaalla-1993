@@ -28,6 +28,7 @@ Recommended: **Supabase** (database, auth, storage) + **Vercel** (Next.js). Any 
 | `NEXT_PUBLIC_APP_URL` | public | yes — used in e-mails and certificate QR codes |
 | `RESEND_API_KEY`, `EMAIL_FROM` | server | recommended (required for join-by-code) |
 | `MUX_SIGNING_KEY_ID`, `MUX_SIGNING_PRIVATE_KEY` | server | optional (adaptive video) |
+| `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_CDN_HOSTNAME`, `BUNNY_STREAM_TOKEN_KEY` | server | optional (Bunny Stream video, all four) |
 
 Never prefix the service-role key with `NEXT_PUBLIC_`.
 
@@ -63,7 +64,20 @@ Events (course assigned, certificate, support, partner portal, report shared, ap
 
 1. In Mux, create a signing key; base64-encode the private key PEM: `base64 -w0 key.pem`.
 2. Set `MUX_SIGNING_KEY_ID` and `MUX_SIGNING_PRIVATE_KEY`.
-3. Upload videos in Mux with a **signed** playback policy and paste the playback ID in the lesson editor (tab "Diffusion adaptative").
+3. Upload videos in Mux with a **signed** playback policy and paste the playback ID in the lesson editor (tab "Diffusion adaptative (Mux)").
+
+### Bunny Stream (optional, recommended)
+
+Videos are uploaded from the lesson editor (tab "Bunny Stream") straight to Bunny: the server creates the video and gives the browser a signed upload ticket for that video only (the API key never leaves the server). Bunny encodes several qualities; teachers watch through the SANADY player (adaptive HLS) with links signed for the length of the lesson, so progress tracking works as with the other sources.
+
+1. In bunny.net → **Stream**, create a video library (e.g. `sanady-production`). Pick storage regions close to Morocco (Europe).
+2. Library → **API**: copy the **Video Library ID**, the **API Key** and the **CDN Hostname** (`vz-….b-cdn.net`).
+3. Library → **Security**: enable **CDN token authentication** and copy its key. In **Allowed domains**, add the production domain (e.g. `sanady-core.vercel.app`) and `localhost` for development. Leave *Embed view token authentication* off (SANADY does not use the Bunny iframe).
+4. Set `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_CDN_HOSTNAME`, `BUNNY_STREAM_TOKEN_KEY` in Vercel (Production), then **redeploy**: the Content-Security-Policy adds the CDN host and `video.bunnycdn.com` only when the hostname is set.
+5. Apply the migration `20261107000100_bunny_video.sql` (`npm run db:apply`).
+6. Check: *Administration → Paramètres → Services externes* shows "Vidéo Bunny Stream : Configurée". Upload a short video in a draft lesson; the editor shows the encoding progress, then "Vidéo en place"; open "Aperçu enseignant" and play it.
+
+A video that is replaced or whose lesson is deleted stays in the Bunny library (it may be shared by a restored version of the training): delete it in the Bunny dashboard when no lesson uses it any more.
 
 ## 7. Backups and recovery
 

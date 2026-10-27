@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
 import { CircleCheck, FileText, Trash2 } from "lucide-react";
-import { addLessonResource, removeLessonResource, setLessonPdf, setLessonVideo, updateLesson } from "@/server/actions/courses";
+import { addLessonResource, removeLessonResource, setLessonPdf, setLessonVideo, startBunnyUpload, updateLesson } from "@/server/actions/courses";
 import { ActionButton } from "@/components/common/action-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/field";
@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatClock } from "@/lib/format";
 import { formatBytes } from "@/lib/media";
 import { INITIAL_ACTION_STATE, type Lesson, type LessonResource } from "@/lib/types";
-import { readVideoDuration, safeFileName } from "@/lib/upload";
+import { readVideoDuration, safeFileName, uploadToBunny } from "@/lib/upload";
 import { FileUploader } from "./file-uploader";
 
 export function LessonDetailsForm({ lesson }: { lesson: Lesson }) {
@@ -76,7 +76,20 @@ export function LessonDetailsForm({ lesson }: { lesson: Lesson }) {
   );
 }
 
-export function LessonContentEditor({ lesson, muxConfigured }: { lesson: Lesson; muxConfigured: boolean }) {
+/** Encoding state of the lesson's Bunny video, read on the server (null: not in the library or unreachable). */
+export type BunnyStatus = { state: "ready" | "processing" | "failed"; progress: number } | null;
+
+export function LessonContentEditor({
+  lesson,
+  muxConfigured,
+  bunnyConfigured,
+  bunnyStatus,
+}: {
+  lesson: Lesson;
+  muxConfigured: boolean;
+  bunnyConfigured: boolean;
+  bunnyStatus?: BunnyStatus;
+}) {
   const router = useRouter();
   const contentPath = (file: File) => `${lesson.course_id}/${lesson.id}/${safeFileName(file.name)}`;
 
@@ -107,10 +120,31 @@ export function LessonContentEditor({ lesson, muxConfigured }: { lesson: Lesson;
     );
   }
 
-  const current = lesson.video_ref ? (
+  const duration = lesson.video_duration_seconds ? ` · durée ${formatClock(lesson.video_duration_seconds)}` : "";
+  const current = lesson.video_ref && lesson.video_provider === "bunny" ? (
+    !bunnyConfigured ? (
+      <Alert tone="warning" title="Vidéo Bunny Stream, lecture impossible">
+        Identifiant {lesson.video_ref}. Bunny Stream n’est pas configuré sur ce serveur : les enseignants ne peuvent pas lire cette vidéo.
+      </Alert>
+    ) : bunnyStatus?.state === "ready" ? (
+      <Alert tone="success" title="Vidéo en place">
+        Bunny Stream · identifiant {lesson.video_ref}
+        {duration}
+      </Alert>
+    ) : bunnyStatus?.state === "processing" ? (
+      <Alert tone="info" title="Encodage en cours chez Bunny Stream">
+        {bunnyStatus.progress > 0 ? `${bunnyStatus.progress} % · ` : ""}La vidéo sera lisible dans quelques minutes. Rechargez la page pour
+        suivre l’avancement.
+      </Alert>
+    ) : (
+      <Alert tone="danger" title={bunnyStatus ? "L’encodage a échoué" : "Vidéo introuvable dans Bunny Stream"}>
+        Identifiant {lesson.video_ref}. Téléversez de nouveau le fichier ou associez une autre vidéo.
+      </Alert>
+    )
+  ) : lesson.video_ref ? (
     <Alert tone="success" title="Vidéo en place">
       {lesson.video_provider === "mux" ? `Mux · identifiant ${lesson.video_ref}` : "Stockage sécurisé SANADY"}
-      {lesson.video_duration_seconds ? ` · durée ${formatClock(lesson.video_duration_seconds)}` : ""}
+      {duration}
     </Alert>
   ) : (
     <Alert tone="warning">Aucune vidéo. La leçon ne peut pas être publiée sans contenu.</Alert>
@@ -120,8 +154,13 @@ export function LessonContentEditor({ lesson, muxConfigured }: { lesson: Lesson;
     <div className="space-y-4">
       {current}
       <Tabs
-        defaultValue={lesson.video_provider === "mux" ? "mux" : "storage"}
+        defaultValue={lesson.video_provider ?? (bunnyConfigured ? "bunny" : "storage")}
         items={[
+          {
+            value: "bunny",
+            label: "Bunny Stream",
+            content: <BunnyForm lesson={lesson} configured={bunnyConfigured} />,
+          },
           {
             value: "storage",
             label: "Téléverser un fichier",
@@ -159,9 +198,93 @@ export function LessonContentEditor({ lesson, muxConfigured }: { lesson: Lesson;
   );
 }
 
+function BunnyForm({ lesson, configured }: { lesson: Lesson; configured: boolean }) {
+  const router = useRouter();
+  if (!configured) {
+    return (
+      <Alert tone="warning" title="Bunny Stream non configuré">
+        Renseignez BUNNY_STREAM_LIBRARY_ID, BUNNY_STREAM_API_KEY, BUNNY_STREAM_CDN_HOSTNAME et BUNNY_STREAM_TOKEN_KEY sur le
+        serveur (Vercel), puis redéployez. Tant que ce n’est pas fait, utilisez l’onglet « Téléverser un fichier ».
+      </Alert>
+    );
+  }
+  return (
+    <div className="space-y-5">
+      <FileUploader
+        accept="video/mp4, video/webm, video/quicktime, video/x-matroska"
+        maxBytes={10 * 1024 * 1024 * 1024}
+        upload={(file, onProgress) => uploadToBunny({ file, onProgress, getTicket: () => startBunnyUpload(lesson.id, lesson.course_id) })}
+        onUploaded={async (videoId, file) => {
+          const duration = await readVideoDuration(file);
+          const res = await setLessonVideo({
+            lessonId: lesson.id,
+            courseId: lesson.course_id,
+            provider: "bunny",
+            ref: videoId,
+            durationSeconds: duration,
+          });
+          router.refresh();
+          return res;
+        }}
+        label="Fichier vidéo"
+        hint="MP4, WebM, MOV ou MKV, 10 Go maximum. Envoyé directement à Bunny Stream, qui l’encode en plusieurs qualités (lecture adaptative)."
+      />
+      <LinkVideoForm
+        lesson={lesson}
+        provider="bunny"
+        intro="Ou associez une vidéo déjà présente dans la bibliothèque Bunny Stream de SANADY : copiez son identifiant (Video ID)."
+        idLabel="Identifiant de la vidéo Bunny"
+        submitLabel="Associer la vidéo Bunny"
+        durationHint="Facultatif : lue chez Bunny une fois la vidéo encodée."
+      />
+    </div>
+  );
+}
+
 function MuxForm({ lesson, configured }: { lesson: Lesson; configured: boolean }) {
-  const [playbackId, setPlaybackId] = useState(lesson.video_provider === "mux" ? (lesson.video_ref ?? "") : "");
-  const [duration, setDuration] = useState(lesson.video_duration_seconds ? formatClock(lesson.video_duration_seconds) : "");
+  return (
+    <div className="space-y-4">
+      {!configured ? (
+        <Alert tone="warning" title="Mux non configuré">
+          Renseignez MUX_SIGNING_KEY_ID et MUX_SIGNING_PRIVATE_KEY sur le serveur pour activer la lecture signée. Sans cette
+          configuration, les vidéos Mux ne pourront pas être lues.
+        </Alert>
+      ) : null}
+      <LinkVideoForm
+        lesson={lesson}
+        provider="mux"
+        intro={
+          <>
+            Importez la vidéo dans Mux avec une politique de lecture <strong className="font-medium">signée</strong>, puis indiquez son
+            identifiant de lecture (playback ID).
+          </>
+        }
+        idLabel="Identifiant de lecture Mux"
+        submitLabel="Associer la vidéo Mux"
+        durationHint="Ex. 12:30"
+      />
+    </div>
+  );
+}
+
+/** Links a video already hosted by Mux or Bunny Stream, by its identifier. */
+function LinkVideoForm({
+  lesson,
+  provider,
+  intro,
+  idLabel,
+  submitLabel,
+  durationHint,
+}: {
+  lesson: Lesson;
+  provider: "mux" | "bunny";
+  intro: React.ReactNode;
+  idLabel: string;
+  submitLabel: string;
+  durationHint: string;
+}) {
+  const [playbackId, setPlaybackId] = useState(lesson.video_provider === provider ? (lesson.video_ref ?? "") : "");
+  const [duration, setDuration] = useState(lesson.video_provider === provider && lesson.video_duration_seconds ? formatClock(lesson.video_duration_seconds) : "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const toast = useToast();
@@ -175,22 +298,13 @@ function MuxForm({ lesson, configured }: { lesson: Lesson; configured: boolean }
 
   return (
     <div className="space-y-4">
-      {!configured ? (
-        <Alert tone="warning" title="Mux non configuré">
-          Renseignez MUX_SIGNING_KEY_ID et MUX_SIGNING_PRIVATE_KEY sur le serveur pour activer la lecture signée. Sans cette
-          configuration, les vidéos Mux ne pourront pas être lues.
-        </Alert>
-      ) : null}
-      <p className="text-body text-ink-600">
-        Importez la vidéo dans Mux avec une politique de lecture <strong className="font-medium">signée</strong>, puis indiquez son
-        identifiant de lecture (playback ID).
-      </p>
+      <p className="text-body text-ink-600">{intro}</p>
       {error ? <p role="alert" className="text-label font-medium text-danger-600">{error}</p> : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_160px]">
-        <Field label="Identifiant de lecture Mux">
+        <Field label={idLabel}>
           <Input value={playbackId} onChange={(e) => setPlaybackId(e.target.value.trim())} className="font-mono" />
         </Field>
-        <Field label="Durée (h:mm:ss)" hint="Ex. 12:30">
+        <Field label="Durée (h:mm:ss)" hint={durationHint}>
           <Input value={duration} onChange={(e) => setDuration(e.target.value)} />
         </Field>
       </div>
@@ -204,7 +318,7 @@ function MuxForm({ lesson, configured }: { lesson: Lesson; configured: boolean }
               const res = await setLessonVideo({
                 lessonId: lesson.id,
                 courseId: lesson.course_id,
-                provider: "mux",
+                provider,
                 ref: playbackId,
                 durationSeconds: parseDuration(duration),
               });
@@ -215,7 +329,7 @@ function MuxForm({ lesson, configured }: { lesson: Lesson; configured: boolean }
             })
           }
         >
-          Associer la vidéo Mux
+          {submitLabel}
         </Button>
       </div>
     </div>

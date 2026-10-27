@@ -21,4 +21,18 @@ export const serverEnv = {
     const privateKey = optional(process.env.MUX_SIGNING_PRIVATE_KEY);
     return keyId && privateKey ? { keyId, privateKey } : undefined;
   },
+  /** Bunny Stream: all four values are needed (upload with the API key, signed playback with the token key). */
+  get bunny() {
+    const libraryId = optional(process.env.BUNNY_STREAM_LIBRARY_ID)?.trim();
+    const apiKey = optional(process.env.BUNNY_STREAM_API_KEY)?.trim();
+    const cdnHostname = bunnyCdnHostname();
+    const tokenKey = optional(process.env.BUNNY_STREAM_TOKEN_KEY)?.trim();
+    return libraryId && apiKey && cdnHostname && tokenKey ? { libraryId, apiKey, cdnHostname, tokenKey } : undefined;
+  },
 };
+
+/** The library's CDN host (e.g. vz-1234abcd-567.b-cdn.net), accepted with or without https:// and trailing slash. */
+export function bunnyCdnHostname() {
+  const host = optional(process.env.BUNNY_STREAM_CDN_HOSTNAME)?.trim().replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+  return host && /^[a-z0-9.-]+$/.test(host) ? host : undefined;
+}

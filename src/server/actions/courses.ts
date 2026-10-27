@@ -10,6 +10,9 @@ import { createClient } from "@/lib/supabase/server";
 import type { ActionState, CourseStatus, QuestionKind } from "@/lib/types";
 import { checkboxSchema, optionalText, parseInput, uuidSchema } from "@/lib/validation";
 import { requireSanadyAdmin, requireStaff } from "@/server/auth";
+import { BUNNY_VIDEO_ID } from "@/lib/bunny";
+import { serverEnv } from "@/lib/server-env";
+import { bunnyUploadTicket, bunnyVideo, createBunnyVideo, type BunnyUploadTicket } from "@/server/bunny";
 import { MEDIA_BUCKET } from "@/server/media";
 
 /*
@@ -474,11 +477,34 @@ export async function removeLesson(lessonId: string, courseId: string): Promise<
 
 const storagePath = z.string().min(3).max(500).regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[^/]+(\/[^/]+)?$/, "Chemin invalide.");
 
-/** Attaches an uploaded (or Mux) video to a lesson. */
+/**
+ * First step of a Bunny Stream upload: once the user is shown to be allowed to
+ * edit this video lesson, creates the video in the library and returns a
+ * ticket that lets the browser upload the file into it (and nothing else).
+ */
+export async function startBunnyUpload(
+  lessonId: string,
+  courseId: string,
+): Promise<{ ok: true; ticket: BunnyUploadTicket } | { ok: false; message: string }> {
+  await requireStaff();
+  if (!uuidSchema.safeParse(lessonId).success || !uuidSchema.safeParse(courseId).success) return { ok: false, message: "Données de la vidéo invalides." };
+  if (!serverEnv.bunny) return { ok: false, message: "Bunny Stream n’est pas configuré sur ce serveur." };
+  const supabase = await createClient();
+  const { data: current } = await supabase.from("lessons").select("title").eq("id", lessonId).eq("course_id", courseId).eq("kind", "video").maybeSingle();
+  // Re-saving the current title changes nothing but succeeds only where RLS allows editing.
+  const title = (current as { title: string } | null)?.title;
+  const { data: editable } = title ? await supabase.from("lessons").update({ title }).eq("id", lessonId).select("id") : { data: null };
+  if (!title || !editable?.length) return { ok: false, message: messageFor("forbidden") };
+  const videoId = await createBunnyVideo(title);
+  const ticket = videoId ? bunnyUploadTicket(videoId) : null;
+  return ticket ? { ok: true, ticket } : { ok: false, message: "Bunny Stream n’a pas répondu. Vérifiez la configuration ou réessayez dans un instant." };
+}
+
+/** Attaches an uploaded (Supabase Storage or Bunny Stream) or Mux video to a lesson. */
 export async function setLessonVideo(input: {
   lessonId: string;
   courseId: string;
-  provider: "storage" | "mux";
+  provider: "storage" | "mux" | "bunny";
   ref: string;
   durationSeconds: number | null;
 }): Promise<ActionState> {
@@ -487,7 +513,7 @@ export async function setLessonVideo(input: {
     .object({
       lessonId: uuidSchema,
       courseId: uuidSchema,
-      provider: z.enum(["storage", "mux"]),
+      provider: z.enum(["storage", "mux", "bunny"]),
       ref: z.string().trim().min(3).max(500),
       durationSeconds: z.number().int().positive().max(24 * 3600).nullable(),
     })
@@ -496,6 +522,14 @@ export async function setLessonVideo(input: {
   const v = parsed.data;
   if (v.provider === "storage" && !storagePath.safeParse(v.ref).success) return { ok: false, message: "Chemin de fichier invalide." };
   if (v.provider === "mux" && !/^[A-Za-z0-9]{10,100}$/.test(v.ref)) return { ok: false, message: "Identifiant de lecture Mux invalide." };
+  if (v.provider === "bunny") {
+    if (!BUNNY_VIDEO_ID.test(v.ref)) return { ok: false, message: "Identifiant de vidéo Bunny invalide (format attendu : 8-4-4-4-12 caractères)." };
+    if (!serverEnv.bunny) return { ok: false, message: "Bunny Stream n’est pas configuré sur ce serveur." };
+    // The video must exist in SANADY's library; its duration is known once encoded.
+    const info = await bunnyVideo(v.ref);
+    if (!info) return { ok: false, message: "Cette vidéo est introuvable dans la bibliothèque Bunny Stream de SANADY." };
+    v.durationSeconds ??= info.lengthSeconds ? Math.round(info.lengthSeconds) : null;
+  }
 
   const supabase = await createClient();
   const { data: before } = await supabase.from("lessons").select("video_provider, video_ref").eq("id", v.lessonId).maybeSingle();

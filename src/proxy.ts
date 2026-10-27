@@ -17,6 +17,13 @@ const supabaseOrigin = (() => {
   }
 })();
 
+// Bunny Stream: the library's CDN (playback) and the upload endpoint, only once configured.
+const bunnyCdn = (() => {
+  const host = process.env.BUNNY_STREAM_CDN_HOSTNAME?.trim().replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+  return host && /^[a-z0-9.-]+$/.test(host) ? ` https://${host}` : "";
+})();
+const bunnyUpload = bunnyCdn ? " https://video.bunnycdn.com" : "";
+
 function contentSecurityPolicy(nonce: string) {
   const isDev = process.env.NODE_ENV === "development";
   const supabase = supabaseOrigin ? ` ${supabaseOrigin}` : "";
@@ -26,10 +33,10 @@ function contentSecurityPolicy(nonce: string) {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     // React style attributes (progress bars…) need inline styles; scripts stay strict.
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob:${supabase} https://image.mux.com`,
+    `img-src 'self' data: blob:${supabase} https://image.mux.com${bunnyCdn}`,
     "font-src 'self'",
-    `media-src 'self' blob:${supabase} https://stream.mux.com https://*.mux.com`,
-    `connect-src 'self'${supabase}${supabaseWs} https://*.mux.com`,
+    `media-src 'self' blob:${supabase} https://stream.mux.com https://*.mux.com${bunnyCdn}`,
+    `connect-src 'self'${supabase}${supabaseWs} https://*.mux.com${bunnyCdn}${bunnyUpload}`,
     "worker-src 'self' blob:",
     // Institutional film (privacy-enhanced YouTube player, no cookies until play).
     "frame-src 'self' blob: https://www.youtube-nocookie.com",

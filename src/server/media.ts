@@ -1,6 +1,7 @@
 import "server-only";
 import { createPrivateKey } from "node:crypto";
 import { SignJWT } from "jose";
+import { BUNNY_VIDEO_ID, bunnyPlaybackUrls } from "@/lib/bunny";
 import { serverEnv } from "@/lib/server-env";
 import { createClient } from "@/lib/supabase/server";
 import type { VideoProvider } from "@/lib/types";
@@ -55,6 +56,18 @@ export async function videoSource(lesson: {
   if (lesson.video_provider === "mux") {
     const signed = await muxSignedUrls(lesson.video_ref, ttl);
     return signed ? { type: "hls", url: signed.url, poster: signed.poster } : { type: "unavailable", reason: "not_configured" };
+  }
+  if (lesson.video_provider === "bunny") {
+    const bunny = serverEnv.bunny;
+    if (!bunny) return { type: "unavailable", reason: "not_configured" };
+    if (!BUNNY_VIDEO_ID.test(lesson.video_ref)) return { type: "unavailable", reason: "missing" };
+    const signed = bunnyPlaybackUrls({
+      hostname: bunny.cdnHostname,
+      tokenKey: bunny.tokenKey,
+      videoId: lesson.video_ref,
+      expires: Math.floor(Date.now() / 1000) + ttl,
+    });
+    return { type: "hls", url: signed.url, poster: signed.poster };
   }
   const url = await signedMediaUrl(lesson.video_ref, ttl);
   return url ? { type: "mp4", url } : { type: "unavailable", reason: "denied" };

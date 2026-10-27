@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ClipboardCheck, Eye, Plus } from "lucide-react";
-import { LessonContentEditor, LessonDetailsForm, ResourcesEditor } from "@/components/admin/lesson-editor";
+import { LessonContentEditor, LessonDetailsForm, ResourcesEditor, type BunnyStatus } from "@/components/admin/lesson-editor";
 import { buttonClasses } from "@/components/ui/button";
 import { Badge, Card, CardBody, CardHeader } from "@/components/ui/surface";
+import { bunnyVideoState } from "@/lib/bunny";
 import { LESSON_KINDS } from "@/lib/labels";
 import { serverEnv } from "@/lib/server-env";
 import { requireStaff } from "@/server/auth";
+import { bunnyVideo } from "@/server/bunny";
 import { getLessonEditorData } from "@/server/queries/admin";
 
 export const metadata: Metadata = { title: "Leçon" };
@@ -20,6 +22,11 @@ export default async function LessonEditorPage(props: PageProps<"/admin/formatio
   const { lesson, resources, quiz } = data;
   const base = `/admin/formations/${courseId}`;
   const hasContent = Boolean(lesson.video_ref || lesson.pdf_path);
+  let bunnyStatus: BunnyStatus = null;
+  if (lesson.video_provider === "bunny" && lesson.video_ref && serverEnv.bunny) {
+    const info = await bunnyVideo(lesson.video_ref);
+    if (info) bunnyStatus = { state: bunnyVideoState(info.status), progress: Math.round(info.encodeProgress) };
+  }
 
   return (
     <>
@@ -47,7 +54,7 @@ export default async function LessonEditorPage(props: PageProps<"/admin/formatio
           <Card>
             <CardHeader title="Contenu" description="Les fichiers sont stockés de manière privée et diffusés par liens temporaires aux seuls enseignants autorisés." />
             <CardBody>
-              <LessonContentEditor lesson={lesson} muxConfigured={Boolean(serverEnv.mux)} />
+              <LessonContentEditor lesson={lesson} muxConfigured={Boolean(serverEnv.mux)} bunnyConfigured={Boolean(serverEnv.bunny)} bunnyStatus={bunnyStatus} />
             </CardBody>
           </Card>
           <Card>

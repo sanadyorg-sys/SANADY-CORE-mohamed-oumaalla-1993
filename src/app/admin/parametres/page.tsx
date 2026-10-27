@@ -16,6 +16,7 @@ export default async function SettingsPage() {
   const [settings, categories, portal] = await Promise.all([getSettings(), getCategories(), portalEnabled()]);
   const emailConfigured = Boolean(serverEnv.resendApiKey);
   const muxConfigured = Boolean(serverEnv.mux);
+  const bunnyConfigured = Boolean(serverEnv.bunny);
 
   return (
     <>
@@ -72,7 +73,8 @@ export default async function SettingsPage() {
               <DescriptionList
                 items={[
                   { term: "Envoi d’e-mails", value: emailConfigured ? "Configuré (Resend)" : "Non configuré" },
-                  { term: "Vidéo adaptative", value: muxConfigured ? "Configurée (Mux, lecture signée)" : "Non configurée" },
+                  { term: "Vidéo Bunny Stream", value: bunnyConfigured ? "Configurée (téléversement direct, lecture signée)" : "Non configurée" },
+                  { term: "Vidéo adaptative Mux", value: muxConfigured ? "Configurée (lecture signée)" : "Non configurée" },
                   { term: "Règles d’évaluation", value: "Seuil 70 % · 3 tentatives (fixées)" },
                 ]}
               />
