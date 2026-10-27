@@ -77,7 +77,20 @@ const ENTERPRISE_ITEMS: NavItem[] = [
   { href: "/admin/studio", label: "Studio de production", icon: Clapperboard },
 ];
 
-export function navigationFor(area: Area, institutionId?: string, role: NavRole = "admin", enterprise = false): NavSection[] {
+/** Approvers from another team reach the enterprise pages where commitments are approved. */
+const ENTERPRISE_APPROVAL_ITEMS: NavItem[] = ENTERPRISE_ITEMS.filter((i) =>
+  ["/admin/partenariats/entreprises/propositions", "/admin/partenariats/entreprises/contrats", "/admin/partenariats/entreprises/finances"].includes(i.href),
+);
+
+export function navigationFor(area: Area, institutionId?: string, role: NavRole = "admin", enterprise = false, approver = false): NavSection[] {
+  const sections = baseNavigation(area, institutionId, role, enterprise);
+  if (area === "admin" && approver && role !== "admin" && role !== "enterprise") {
+    return [...sections, { title: "Enterprise · approbations", items: ENTERPRISE_APPROVAL_ITEMS }];
+  }
+  return sections;
+}
+
+function baseNavigation(area: Area, institutionId: string | undefined, role: NavRole, enterprise: boolean): NavSection[] {
   if (area === "admin" && role === "enterprise") {
     return [{ title: "SANADY Enterprise", items: ENTERPRISE_ITEMS }];
   }
@@ -198,16 +211,18 @@ export function SidebarNav({
   institutionId,
   role,
   enterprise,
+  approver,
   onNavigate,
 }: {
   area: Area;
   institutionId?: string;
   role?: NavRole;
   enterprise?: boolean;
+  approver?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const sections = navigationFor(area, institutionId, role, enterprise);
+  const sections = navigationFor(area, institutionId, role, enterprise, approver);
 
   return (
     <nav aria-label="Navigation principale" className="space-y-6">

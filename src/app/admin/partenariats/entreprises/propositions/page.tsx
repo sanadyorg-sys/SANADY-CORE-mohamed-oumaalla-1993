@@ -8,7 +8,7 @@ import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { formatDate, formatRelative } from "@/lib/format";
 import { ENTERPRISE_SERVICES, PROPOSAL_STATUS, lineTotal, type ProposalStatus } from "@/lib/enterprise";
 import { formatAmount } from "@/lib/partnerships";
-import { requireEnterpriseStaff } from "@/server/auth";
+import { requireEnterpriseApprover } from "@/server/auth";
 import { listProposals } from "@/server/queries/enterprise";
 
 export const metadata: Metadata = { title: "Propositions — Enterprise" };
@@ -23,7 +23,7 @@ const TABS: Array<{ key: string; label: string; status?: ProposalStatus }> = [
 ];
 
 export default async function ProposalsPage(props: PageProps<"/admin/partenariats/entreprises/propositions">) {
-  await requireEnterpriseStaff();
+  await requireEnterpriseApprover();
   const sp = await props.searchParams;
   const tab = TABS.find((t) => t.key === sp.onglet) ?? TABS[0]!;
   const rows = await listProposals({ status: tab.status });

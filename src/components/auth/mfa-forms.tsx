@@ -66,7 +66,6 @@ function errorText(message?: string) {
 
 /** First-time setup: QR code → code → session upgraded to aal2. */
 export function MfaEnrollForm({ suite }: { suite: string }) {
-  const router = useRouter();
   const [factor, setFactor] = useState<{ id: string; qr: string; secret: string } | null>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -105,8 +104,9 @@ export function MfaEnrollForm({ suite }: { suite: string }) {
         setError(errorText(verifyError.message));
         return;
       }
-      router.replace(suite);
-      router.refresh();
+      // Full page load: the next request carries the new two-step session
+      // cookie, and no cached redirect to this screen can be replayed.
+      window.location.replace(suite);
     });
 
   return (
@@ -184,8 +184,9 @@ export function MfaVerifyForm({ suite }: { suite: string }) {
         setCode("");
         return;
       }
-      router.replace(suite);
-      router.refresh();
+      // Full page load: the next request carries the new two-step session
+      // cookie, and no cached redirect to this screen can be replayed.
+      window.location.replace(suite);
     });
 
   return (

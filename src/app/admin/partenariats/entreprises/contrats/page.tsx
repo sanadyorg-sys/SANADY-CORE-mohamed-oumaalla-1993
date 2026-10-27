@@ -7,7 +7,7 @@ import { LinkTabs } from "@/components/ui/tabs";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { formatDate, formatRelative } from "@/lib/format";
 import { CONTRACT_STATUS, PRICING_MODELS, SERVICE_PLANS, type ContractStatus } from "@/lib/enterprise";
-import { requireEnterpriseStaff } from "@/server/auth";
+import { requireEnterpriseApprover } from "@/server/auth";
 import { listContracts } from "@/server/queries/enterprise";
 
 export const metadata: Metadata = { title: "Contrats — Enterprise" };
@@ -23,7 +23,7 @@ const TABS: Array<{ key: string; label: string; status?: ContractStatus }> = [
 ];
 
 export default async function ContractsPage(props: PageProps<"/admin/partenariats/entreprises/contrats">) {
-  await requireEnterpriseStaff();
+  await requireEnterpriseApprover();
   const sp = await props.searchParams;
   const tab = TABS.find((t) => t.key === sp.onglet) ?? TABS[0]!;
   const rows = await listContracts({ status: tab.status });

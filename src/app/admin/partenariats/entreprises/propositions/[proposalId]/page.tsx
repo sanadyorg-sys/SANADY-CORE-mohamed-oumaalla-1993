@@ -16,7 +16,7 @@ import { formatAmount } from "@/lib/partnerships";
 import { uuidSchema } from "@/lib/validation";
 import { createContractFromProposal } from "@/server/actions/contracts";
 import { deleteLine } from "@/server/actions/enterprise";
-import { requireEnterpriseStaff } from "@/server/auth";
+import { requireEnterpriseApprover, staffRole } from "@/server/auth";
 import { contractForProposal, enterpriseActor, getProposal } from "@/server/queries/enterprise";
 import { listPlans } from "@/server/queries/plans";
 
@@ -35,11 +35,12 @@ const ACTION_LABELS: Record<string, string> = {
 const num = (v: string | number) => new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(Number(v));
 
 export default async function ProposalPage(props: PageProps<"/admin/partenariats/entreprises/propositions/[proposalId]">) {
-  const viewer = await requireEnterpriseStaff();
+  const viewer = await requireEnterpriseApprover();
   const { proposalId } = await props.params;
   if (!uuidSchema.safeParse(proposalId).success) notFound();
   const [detail, actor, contract, plans] = await Promise.all([getProposal(proposalId), enterpriseActor(viewer), contractForProposal(proposalId), listPlans()]);
   if (!detail) notFound();
+  const enterpriseTeam = viewer.isSanadyAdmin || staffRole(viewer) === "enterprise";
   const { proposal: p, lines, notes, history } = detail;
   const editable = actor.manager && (p.status === "draft" || p.status === "internal_review");
   const total = lines.reduce((t, l) => t + lineTotal(l), 0);
@@ -47,7 +48,7 @@ export default async function ProposalPage(props: PageProps<"/admin/partenariats
 
   return (
     <>
-      <Link href={p.organization ? `/admin/partenariats/entreprises/clients/${p.organization.id}` : "/admin/partenariats/entreprises/propositions"} className="mb-3 inline-flex items-center gap-1.5 text-label text-ink-600 hover:text-ink-900">
+      <Link href={p.organization && enterpriseTeam ? `/admin/partenariats/entreprises/clients/${p.organization.id}` : "/admin/partenariats/entreprises/propositions"} className="mb-3 inline-flex items-center gap-1.5 text-label text-ink-600 hover:text-ink-900">
         <ArrowLeft className="size-4" aria-hidden /> {p.organization?.name ?? "Propositions"}
       </Link>
       <PageHeader

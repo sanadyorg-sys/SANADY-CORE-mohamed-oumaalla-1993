@@ -38,6 +38,7 @@ export function AppShell({
   institutionId,
   navRole,
   enterprise = false,
+  approver = false,
   currentContextKey,
   contexts,
   user,
@@ -51,6 +52,8 @@ export function AppShell({
   navRole?: NavRole;
   /** Company workspace or employee of companies only (SANADY Enterprise): no teachers' library. */
   enterprise?: boolean;
+  /** Approver (partnership signatory): adds the enterprise approval pages to the admin menu. */
+  approver?: boolean;
   currentContextKey: string;
   contexts: ShellContext[];
   user: ShellUser;
@@ -74,7 +77,7 @@ export function AppShell({
         <ContextSwitcher contexts={contexts} current={current} fallbackLabel={areaTitle[area]} />
       </div>
       <div className="flex-1 overflow-y-auto px-3 pb-6">
-        <SidebarNav area={area} institutionId={institutionId} role={navRole} enterprise={enterprise} onNavigate={onNavigate} />
+        <SidebarNav area={area} institutionId={institutionId} role={navRole} enterprise={enterprise} approver={approver} onNavigate={onNavigate} />
       </div>
       <div className="border-t border-line px-5 py-3 text-caption text-ink-500">
         <Link href="/confidentialite" className="hover:text-ink-800 hover:underline" onClick={onNavigate}>

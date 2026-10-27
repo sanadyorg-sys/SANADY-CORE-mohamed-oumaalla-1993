@@ -16,7 +16,7 @@ import { formatAmount } from "@/lib/partnerships";
 import { uuidSchema } from "@/lib/validation";
 import { applyContractToTenant, deleteContractLine } from "@/server/actions/contracts";
 import { confirmPayment } from "@/server/actions/finance";
-import { requireEnterpriseStaff } from "@/server/auth";
+import { requireEnterpriseApprover } from "@/server/auth";
 import { enterpriseActor, getContract } from "@/server/queries/enterprise";
 import { contractInvoices } from "@/server/queries/finance";
 
@@ -30,7 +30,7 @@ const HISTORY_LABELS: Record<string, string> = {
 };
 
 export default async function ContractPage(props: PageProps<"/admin/partenariats/entreprises/contrats/[contractId]">) {
-  const viewer = await requireEnterpriseStaff();
+  const viewer = await requireEnterpriseApprover();
   const { contractId } = await props.params;
   if (!uuidSchema.safeParse(contractId).success) notFound();
   const [detail, actor] = await Promise.all([getContract(contractId), enterpriseActor(viewer)]);

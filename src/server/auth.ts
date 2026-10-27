@@ -169,6 +169,28 @@ export async function requireEnterpriseStaff(): Promise<Viewer> {
   return requireStaff(["admin", "enterprise"]);
 }
 
+/** Active approver (partnership signatory): decides on partnerships and on enterprise commitments. */
+export const isApprover = cache(async (userId: string) => {
+  const supabase = await createClient();
+  const { data } = await supabase.from("partnership_signatories").select("id").eq("user_id", userId).is("revoked_at", null).maybeSingle();
+  return Boolean(data);
+});
+
+/**
+ * Enterprise pages where commitments are approved (proposals, contracts,
+ * finances): the enterprise team, and approvers from another team, always
+ * from a two-factor session (the database applies the same rule).
+ */
+export async function requireEnterpriseApprover(): Promise<Viewer> {
+  const viewer = await requireStaff(["admin", "manager", "trainer", "partners", "enterprise"]);
+  const role = staffRole(viewer);
+  if (role === "admin" || role === "enterprise") return viewer;
+  if (!(await isApprover(viewer.id))) redirect(homeFor(viewer));
+  if (!viewer.mfaEnrolled) redirect("/securite/activer?suite=/admin");
+  if (viewer.aal !== "aal2") redirect("/securite/verification?suite=/admin");
+  return viewer;
+}
+
 /** Institution pages readable by its administrators and supervisors. */
 export async function requireInstitutionViewer(institutionId: string) {
   const viewer = await requireViewer();

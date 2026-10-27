@@ -13,14 +13,14 @@ import { MONTHS_SHORT, formatDate } from "@/lib/format";
 import { COST_CATEGORIES, INFRASTRUCTURE_COSTS, PAYMENT_METHODS, REVENUE_CATEGORIES } from "@/lib/enterprise";
 import { formatAmount } from "@/lib/partnerships";
 import { confirmPayment, deleteCost } from "@/server/actions/finance";
-import { requireEnterpriseStaff } from "@/server/auth";
+import { requireEnterpriseApprover } from "@/server/auth";
 import { enterpriseActor } from "@/server/queries/enterprise";
 import { contractOptions, enterpriseFinance, financeMonthly, listCosts, unconfirmedPayments } from "@/server/queries/finance";
 
 export const metadata: Metadata = { title: "Finances — Enterprise" };
 
 export default async function FinancePage(props: PageProps<"/admin/partenariats/entreprises/finances">) {
-  const viewer = await requireEnterpriseStaff();
+  const viewer = await requireEnterpriseApprover();
   const actor = await enterpriseActor(viewer);
   if (!actor.manager && !actor.signatory) {
     return (
