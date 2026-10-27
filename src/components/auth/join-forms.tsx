@@ -8,9 +8,11 @@ import { Alert } from "@/components/ui/surface";
 import { INITIAL_ACTION_STATE } from "@/lib/types";
 import { InstitutionConsent } from "./invitation-forms";
 
-function CodeInput() {
+// <Field> passes id, aria-describedby and invalid: they must reach the input so the label is announced.
+function CodeInput(field: { id?: string; "aria-describedby"?: string; invalid?: boolean }) {
   return (
     <Input
+      {...field}
       name="code"
       required
       autoComplete="off"

@@ -11,9 +11,21 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { createClient } from "@/lib/supabase/browser";
 
 /** Six-digit one-time code input (numeric keyboard on mobile, autofill from authenticator). */
-function CodeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function CodeInput({
+  value,
+  onChange,
+  ...field
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  // Passed by <Field> so the label and hint are announced with the input.
+  id?: string;
+  "aria-describedby"?: string;
+  invalid?: boolean;
+}) {
   return (
     <Input
+      {...field}
       value={value}
       onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
       inputMode="numeric"
