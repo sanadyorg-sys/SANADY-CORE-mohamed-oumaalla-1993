@@ -15,8 +15,11 @@ beforeAll(async () => {
 afterAll(async () => db?.close());
 
 const SIMPLE = { modules: [{ lessons: [{ kind: "pdf" as const, pages: 2 }], questions: [{ kind: "single" as const, options: [true, false] }] }] };
-const today = new Date().toISOString().slice(0, 10);
-const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+// Reports count calendar days in Morocco's time zone, so the period does too
+// (around midnight UTC the Moroccan date is already the next day).
+const moroccoDate = (ms: number) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "Africa/Casablanca" });
+const today = moroccoDate(Date.now());
+const monthAgo = moroccoDate(Date.now() - 30 * 86400000);
 
 async function institutionWithAdmin() {
   const inst = await db.as(admin, async (q) => {
