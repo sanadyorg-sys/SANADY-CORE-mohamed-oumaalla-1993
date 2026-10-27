@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { ArrowRight, KeyRound } from "lucide-react";
@@ -37,6 +38,22 @@ function CodeInput({
       autoFocus
       className="h-12 text-center font-mono text-[1.375rem] tracking-[0.5em]"
     />
+  );
+}
+
+/**
+ * Way out of the two-factor screens: without it, a person half signed in (password only)
+ * is sent back here from the sign-in page and cannot use another account.
+ */
+export function SwitchAccount({ email }: { email: string }) {
+  return (
+    <p className="mt-6 border-t border-line pt-4 text-label text-ink-600">
+      Connecté(e) avec <span className="font-medium text-ink-800">{email}</span>.{" "}
+      {/* Never prefetched: following this link signs the person out. */}
+      <Link href="/deconnexion" prefetch={false} className="font-semibold text-accent-700 hover:underline">
+        Se connecter avec un autre compte
+      </Link>
+    </p>
   );
 }
 

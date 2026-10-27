@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
-import { MfaEnrollForm } from "@/components/auth/mfa-forms";
+import { MfaEnrollForm, SwitchAccount } from "@/components/auth/mfa-forms";
 import { safeRedirectPath } from "@/lib/validation";
 import { homeFor, requireViewer, staffRole } from "@/server/auth";
 
@@ -26,6 +26,7 @@ export default async function MfaEnrollPage(props: PageProps<"/securite/activer"
           : "Protégez votre compte : à chaque connexion, un code temporaire généré sur votre téléphone vous sera demandé."}
       </p>
       <MfaEnrollForm suite={next} />
+      <SwitchAccount email={viewer.email} />
     </>
   );
 }
