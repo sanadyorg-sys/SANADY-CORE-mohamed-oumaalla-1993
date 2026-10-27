@@ -203,7 +203,7 @@ export function VideoSpotlight({
               </span>
               <h3 className="mt-3 text-card font-bold text-white">Plateforme de formation SANADY</h3>
               <p className="mt-1 text-caption leading-relaxed text-brand-200">
-                Des modules en ligne courts, interactifs et gratuits, complétés par des évaluations formatives
+                Des modules en ligne courts et interactifs, complétés par des évaluations formatives
                 et des certificats vérifiables par QR code.
               </p>
             </div>

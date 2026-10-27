@@ -18,6 +18,9 @@ import { MEDIA_BUCKET } from "@/server/media";
  */
 
 const coursePath = (id: string) => `/admin/formations/${id}`;
+
+/** An update that matched no row: RLS refused it (e.g. course no longer editable) or the item is gone. */
+const NOT_SAVED = "Modification non enregistrée : cet élément n’existe plus ou vous n’avez plus le droit de le modifier. Rechargez la page.";
 const revalidateCourse = (id: string) => {
   revalidatePath(coursePath(id), "layout");
   revalidatePath("/admin/formations");
@@ -72,7 +75,7 @@ export async function updateCourse(_prev: ActionState, formData: FormData): Prom
     .slice(0, 20);
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("courses")
     .update({
       title: d.title,
@@ -86,8 +89,10 @@ export async function updateCourse(_prev: ActionState, formData: FormData): Prom
       // Public listing is a publication decision: staff only (trainers never send it).
       ...(viewer.isCourseStaff ? { public_listing: d.public_listing } : {}),
     })
-    .eq("id", d.id);
+    .eq("id", d.id)
+    .select("id");
   if (error) return { ok: false, message: errorMessage(error) };
+  if (!updated?.length) return { ok: false, message: NOT_SAVED };
   revalidateCourse(d.id);
   revalidatePath("/formations");
   revalidatePath("/");
@@ -98,15 +103,45 @@ export async function setCourseCover(courseId: string, path: string | null): Pro
   await requireStaff();
   const supabase = await createClient();
   const { data: before } = await supabase.from("courses").select("cover_path").eq("id", courseId).maybeSingle();
-  const { error } = await supabase.from("courses").update({ cover_path: path }).eq("id", courseId);
-  if (error) return { ok: false, message: errorMessage(error) };
+  const { data: updated, error } = await supabase.from("courses").update({ cover_path: path }).eq("id", courseId).select("id");
+  if (error || !updated?.length) {
+    if (path) await supabase.storage.from("course-covers").remove([path]);
+    return { ok: false, message: error ? errorMessage(error) : NOT_SAVED };
+  }
   const previous = (before as { cover_path: string | null } | null)?.cover_path;
   if (previous && previous !== path) await supabase.storage.from("course-covers").remove([previous]);
   revalidateCourse(courseId);
   return { ok: true, message: path ? "Image de couverture mise à jour." : "Image de couverture retirée." };
 }
 
-export type PublishResult = ActionState & { issues?: Array<{ message: string; label?: string }> };
+export type PublicationIssue = { message: string; label?: string; href?: string; fix?: string };
+export type PublishResult = ActionState & { issues?: PublicationIssue[] };
+
+type RawIssue = { code: string; label?: string; module_id?: string; lesson_id?: string; question_id?: string };
+
+/** Turns validate_course() results into messages, each with a link to the screen where it is fixed. */
+async function describeIssues(supabase: Awaited<ReturnType<typeof createClient>>, courseId: string, list: RawIssue[]): Promise<PublicationIssue[]> {
+  const base = coursePath(courseId);
+  const moduleIds = list.filter((i) => i.code === "module_no_quiz" && i.module_id).map((i) => i.module_id!);
+  const questionIds = list.filter((i) => i.code === "question_invalid" && i.question_id).map((i) => i.question_id!);
+  const [quizzes, questions] = await Promise.all([
+    moduleIds.length ? supabase.from("quizzes").select("id, module_id").in("module_id", moduleIds) : Promise.resolve({ data: [] }),
+    questionIds.length ? supabase.from("questions").select("id, quiz_id").in("id", questionIds) : Promise.resolve({ data: [] }),
+  ]);
+  const quizByModule = new Map(((quizzes.data ?? []) as Array<{ id: string; module_id: string }>).map((q) => [q.module_id, q.id]));
+  const quizByQuestion = new Map(((questions.data ?? []) as Array<{ id: string; quiz_id: string }>).map((q) => [q.id, q.quiz_id]));
+
+  return list.map((i) => {
+    const issue: PublicationIssue = { message: PUBLICATION_ISSUES[i.code] ?? i.code, label: i.label };
+    const quiz = i.module_id ? quizByModule.get(i.module_id) : i.question_id ? quizByQuestion.get(i.question_id) : undefined;
+    if (i.code.startsWith("course_")) return { ...issue, href: i.code === "course_no_modules" ? `${base}/programme` : base, fix: i.code === "course_no_modules" ? "Ajouter un module" : "Compléter les informations" };
+    if (i.code === "module_no_lessons") return { ...issue, href: `${base}/programme`, fix: "Ajouter une leçon" };
+    if (i.code === "lesson_no_content" && i.lesson_id) return { ...issue, href: `${base}/programme/lecons/${i.lesson_id}`, fix: "Téléverser le contenu" };
+    if (i.code === "module_no_quiz" && quiz) return { ...issue, href: `${base}/programme/evaluations/${quiz}`, fix: "Ajouter des questions" };
+    if (i.code === "question_invalid" && quiz) return { ...issue, href: `${base}/programme/evaluations/${quiz}`, fix: "Corriger la question" };
+    return issue;
+  });
+}
 
 export async function setCourseStatus(courseId: string, status: CourseStatus): Promise<PublishResult> {
   await requireStaff();
@@ -114,13 +149,9 @@ export async function setCourseStatus(courseId: string, status: CourseStatus): P
 
   if (status === "published") {
     const { data: issues } = await supabase.rpc("validate_course", { p_course: courseId });
-    const list = (issues ?? []) as Array<{ code: string; label?: string }>;
+    const list = (issues ?? []) as RawIssue[];
     if (list.length) {
-      return {
-        ok: false,
-        message: messageFor("course_not_publishable"),
-        issues: list.map((i) => ({ message: PUBLICATION_ISSUES[i.code] ?? i.code, label: i.label })),
-      };
+      return { ok: false, message: messageFor("course_not_publishable"), issues: await describeIssues(supabase, courseId, list) };
     }
   }
 
@@ -143,12 +174,12 @@ export async function submitCourseForReview(courseId: string): Promise<PublishRe
   if (!uuidSchema.safeParse(courseId).success) return { ok: false, message: messageFor("not_found") };
   const supabase = await createClient();
   const { data: issues } = await supabase.rpc("validate_course", { p_course: courseId });
-  const list = (issues ?? []) as Array<{ code: string; label?: string }>;
+  const list = (issues ?? []) as RawIssue[];
   if (list.length) {
     return {
       ok: false,
       message: "La formation ne peut pas être soumise tant que les points signalés ne sont pas corrigés.",
-      issues: list.map((i) => ({ message: PUBLICATION_ISSUES[i.code] ?? i.code, label: i.label })),
+      issues: await describeIssues(supabase, courseId, list),
     };
   }
   const { error } = await supabase.rpc("submit_course_for_review", { p_course: courseId });
@@ -259,7 +290,11 @@ export async function createModule(_prev: ActionState, formData: FormData): Prom
   const { error: quizError } = await supabase
     .from("quizzes")
     .insert({ module_id: moduleId, course_id, title: `Évaluation — ${title}` });
-  if (quizError) return { ok: false, message: errorMessage(quizError) };
+  if (quizError) {
+    // A module without its evaluation could never be published: undo it.
+    await supabase.from("modules").delete().eq("id", moduleId);
+    return { ok: false, message: errorMessage(quizError) };
+  }
 
   revalidateCourse(course_id);
   return { ok: true, message: "Module ajouté avec son évaluation." };
@@ -278,11 +313,13 @@ export async function updateModule(_prev: ActionState, formData: FormData): Prom
   );
   if (!parsed.ok) return { ok: false, fieldErrors: parsed.fieldErrors };
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("modules")
     .update({ title: parsed.data.title, description: parsed.data.description })
-    .eq("id", parsed.data.id);
+    .eq("id", parsed.data.id)
+    .select("id");
   if (error) return { ok: false, message: errorMessage(error) };
+  if (!updated?.length) return { ok: false, message: NOT_SAVED };
   revalidateCourse(parsed.data.course_id);
   return { ok: true, message: "Module enregistré." };
 }
@@ -370,7 +407,7 @@ export async function updateLesson(_prev: ActionState, formData: FormData): Prom
   if (!parsed.ok) return { ok: false, fieldErrors: parsed.fieldErrors };
   const d = parsed.data;
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("lessons")
     .update({
       title: d.title,
@@ -380,8 +417,10 @@ export async function updateLesson(_prev: ActionState, formData: FormData): Prom
       completion_threshold: d.completion_threshold === "" ? null : d.completion_threshold / 100,
       pdf_downloadable: d.pdf_downloadable,
     })
-    .eq("id", d.id);
+    .eq("id", d.id)
+    .select("id");
   if (error) return { ok: false, message: errorMessage(error) };
+  if (!updated?.length) return { ok: false, message: NOT_SAVED };
   revalidateCourse(d.course_id);
   return { ok: true, message: "Leçon enregistrée." };
 }
@@ -437,13 +476,20 @@ export async function setLessonVideo(input: {
 
   const supabase = await createClient();
   const { data: before } = await supabase.from("lessons").select("video_provider, video_ref").eq("id", v.lessonId).maybeSingle();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("lessons")
     .update({ video_provider: v.provider, video_ref: v.ref, video_duration_seconds: v.durationSeconds })
     .eq("id", v.lessonId)
-    .eq("kind", "video");
-  if (error) return { ok: false, message: errorMessage(error) };
+    .eq("kind", "video")
+    .select("id");
+  if (error || !updated?.length) {
+    // Nothing was attached: do not leave the uploaded file orphaned in storage.
+    const current = (before as { video_ref: string | null } | null)?.video_ref;
+    if (v.provider === "storage" && v.ref !== current) await supabase.storage.from(MEDIA_BUCKET).remove([v.ref]);
+    return { ok: false, message: error ? errorMessage(error) : NOT_SAVED };
+  }
 
+  // The previous file is removed only once the lesson points to the new one.
   const prev = before as { video_provider: string | null; video_ref: string | null } | null;
   if (prev?.video_provider === "storage" && prev.video_ref && prev.video_ref !== v.ref) {
     await supabase.storage.from(MEDIA_BUCKET).remove([prev.video_ref]);
@@ -482,12 +528,16 @@ export async function setLessonPdf(lessonId: string, courseId: string, path: str
 
   const supabase = await createClient();
   const { data: before } = await supabase.from("lessons").select("pdf_path").eq("id", lessonId).maybeSingle();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("lessons")
     .update({ pdf_path: path, pdf_page_count: pageCount })
     .eq("id", lessonId)
-    .eq("kind", "pdf");
-  if (error) return { ok: false, message: errorMessage(error) };
+    .eq("kind", "pdf")
+    .select("id");
+  if (error || !updated?.length) {
+    await admin.storage.from(MEDIA_BUCKET).remove([path]);
+    return { ok: false, message: error ? errorMessage(error) : NOT_SAVED };
+  }
   const prev = (before as { pdf_path: string | null } | null)?.pdf_path;
   if (prev && prev !== path) await supabase.storage.from(MEDIA_BUCKET).remove([prev]);
 
@@ -520,7 +570,10 @@ export async function addLessonResource(input: {
     file_path: parsed.data.path,
     size_bytes: parsed.data.sizeBytes,
   });
-  if (error) return { ok: false, message: errorMessage(error) };
+  if (error) {
+    await supabase.storage.from(MEDIA_BUCKET).remove([parsed.data.path]);
+    return { ok: false, message: errorMessage(error) };
+  }
   revalidateCourse(parsed.data.courseId);
   return { ok: true, message: "Ressource ajoutée." };
 }
@@ -553,7 +606,7 @@ export async function updateQuiz(_prev: ActionState, formData: FormData): Promis
   );
   if (!parsed.ok) return { ok: false, fieldErrors: parsed.fieldErrors };
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("quizzes")
     .update({
       title: parsed.data.title,
@@ -561,8 +614,10 @@ export async function updateQuiz(_prev: ActionState, formData: FormData): Promis
       shuffle_questions: parsed.data.shuffle_questions,
       shuffle_options: parsed.data.shuffle_options,
     })
-    .eq("id", parsed.data.id);
+    .eq("id", parsed.data.id)
+    .select("id");
   if (error) return { ok: false, message: errorMessage(error) };
+  if (!updated?.length) return { ok: false, message: NOT_SAVED };
   revalidateCourse(parsed.data.course_id);
   return { ok: true, message: "Évaluation enregistrée." };
 }

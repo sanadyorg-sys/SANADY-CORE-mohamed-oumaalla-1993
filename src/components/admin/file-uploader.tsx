@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { formatBytes } from "@/lib/media";
 import type { ActionState } from "@/lib/types";
-import { uploadToStorage, type UploadHandle } from "@/lib/upload";
+import { fileType, uploadToStorage, type UploadHandle } from "@/lib/upload";
 
 /**
  * Drag-and-drop uploader with progress and cancellation. After the upload,
@@ -42,7 +42,8 @@ export function FileUploader({
   const accepted = accept.split(",").map((a) => a.trim());
   const start = async (file: File) => {
     setError(null);
-    if (!accepted.some((a) => (a.endsWith("/*") ? file.type.startsWith(a.slice(0, -1)) : file.type === a))) {
+    const type = fileType(file);
+    if (!accepted.some((a) => (a.endsWith("/*") ? type.startsWith(a.slice(0, -1)) : type === a))) {
       setError("Format de fichier non pris en charge.");
       return;
     }

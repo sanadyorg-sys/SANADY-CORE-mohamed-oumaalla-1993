@@ -13,6 +13,7 @@ export function CatalogCard({ course }: { course: CatalogCourse }) {
         <CourseCover
           path={course.cover_path}
           title={course.title}
+          fallbackLabel={false}
           category={course.category}
           className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-105"
         />

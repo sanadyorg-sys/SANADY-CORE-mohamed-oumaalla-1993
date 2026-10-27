@@ -21,7 +21,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/motion";
 import { createClient } from "@/lib/supabase/server";
 import { FOUNDATION } from "@/lib/institution";
-import studentsPhoto from "../../../../public/brand/sanady-students-waving.jpg";
+import studentsPhoto from "../../../../public/brand/photos/eleves-ecole.jpg";
 
 export const metadata: Metadata = {
   title: "À propos — Fondation SANADY",

@@ -73,7 +73,7 @@ export function CurriculumEditor({ courseId, modules }: { courseId: string; modu
           <EmptyState
             icon={ClipboardCheck}
             title="Aucun module"
-            description="Structurez la formation en modules. Chaque module contient des leçons (vidéo ou PDF) et une évaluation obligatoire."
+            description="Structurez la formation en modules. Chaque module contient des leçons (vidéo ou PDF) et une évaluation, créée automatiquement avec le module : il suffit d’y ajouter des questions."
           />
         </Card>
       ) : null}
@@ -190,19 +190,44 @@ export function CurriculumEditor({ courseId, modules }: { courseId: string; modu
                   <AddLessonDialog courseId={courseId} moduleId={m.id} />
                 </li>
                 {m.quiz ? (
-                  <li className={cn("flex flex-wrap items-center gap-3 px-4 py-3", m.quiz.question_count === 0 && "bg-warning-50/60")}>
-                    <ClipboardCheck className="size-4 shrink-0 text-accent-600" aria-hidden />
+                  <li
+                    className={cn(
+                      "flex flex-wrap items-center gap-3 border-t-2 border-dashed px-4 py-3.5",
+                      m.quiz.question_count === 0 ? "border-warning-200 bg-warning-50/70" : "border-line bg-ink-25/60",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                        m.quiz.question_count === 0 ? "bg-warning-50 text-warning-700 ring-1 ring-inset ring-warning-200" : "bg-accent-50 text-accent-700",
+                      )}
+                    >
+                      <ClipboardCheck className="size-4" aria-hidden />
+                    </span>
                     <div className="min-w-0 flex-1">
+                      <p className="text-caption font-semibold uppercase tracking-wider text-ink-500">Évaluation du module</p>
                       <p className="truncate text-body font-medium text-ink-800">{m.quiz.title}</p>
-                      <p className="text-caption text-ink-500">Évaluation obligatoire · seuil {m.quiz.pass_threshold} % · {m.quiz.max_attempts} tentatives</p>
+                      {m.quiz.question_count === 0 ? (
+                        <p className="mt-0.5 flex items-center gap-1 text-caption font-medium text-warning-700">
+                          <TriangleAlert className="size-3.5 shrink-0" aria-hidden /> Aucune question : ajoutez-en au moins une pour pouvoir soumettre la formation.
+                        </p>
+                      ) : (
+                        <p className="text-caption text-ink-500">
+                          {m.quiz.question_count} question{m.quiz.question_count > 1 ? "s" : ""} · seuil {m.quiz.pass_threshold} % · {m.quiz.max_attempts} tentatives
+                        </p>
+                      )}
                     </div>
-                    {m.quiz.question_count === 0 ? (
-                      <span className="inline-flex items-center gap-1 text-caption font-medium text-warning-700">
-                        <TriangleAlert className="size-3.5" aria-hidden /> Aucune question
-                      </span>
-                    ) : null}
-                    <Link href={`${base}/programme/evaluations/${m.quiz.id}`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
-                      Modifier l’évaluation
+                    <Link
+                      href={`${base}/programme/evaluations/${m.quiz.id}`}
+                      className={buttonClasses({ variant: m.quiz.question_count === 0 ? "accent" : "secondary", size: "sm" })}
+                    >
+                      {m.quiz.question_count === 0 ? (
+                        <>
+                          <Plus aria-hidden /> Ajouter des questions
+                        </>
+                      ) : (
+                        "Gérer les questions"
+                      )}
                     </Link>
                   </li>
                 ) : null}

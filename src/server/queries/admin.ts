@@ -305,9 +305,19 @@ export async function getLessonEditorData(lessonId: string) {
     supabase.from("lesson_resources").select("*").eq("lesson_id", lessonId).order("position"),
   ]);
   if (!lesson.data) return null;
+  const moduleId = (lesson.data as { module_id: string }).module_id;
+  // The module's evaluation, so the lesson page can point to it.
+  const { data: quizRow } = await supabase
+    .from("quizzes")
+    .select("id, title, questions(count)")
+    .eq("module_id", moduleId)
+    .is("questions.archived_at", null)
+    .maybeSingle();
+  const quiz = quizRow as { id: string; title: string; questions: Array<{ count: number }> } | null;
   return {
     lesson: lesson.data as Lesson & { module: { id: string; title: string } | null },
     resources: (resources.data ?? []) as LessonResource[],
+    quiz: quiz ? { id: quiz.id, title: quiz.title, questionCount: quiz.questions[0]?.count ?? 0 } : null,
   };
 }
 

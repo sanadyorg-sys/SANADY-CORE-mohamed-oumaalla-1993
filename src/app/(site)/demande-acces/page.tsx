@@ -10,7 +10,7 @@ import { getCatalog } from "@/server/queries/public";
 
 export const metadata: Metadata = {
   title: "Demander un accès",
-  description: "Demandez votre accès gratuit aux formations SANADY pour les enseignants.",
+  description: "Demandez votre accès aux formations SANADY pour les enseignants.",
 };
 
 const STEPS = [
@@ -50,7 +50,7 @@ export default async function AccessRequestPage({ searchParams }: PageProps<"/de
           <p className="mt-4 text-reading leading-relaxed text-ink-600">
             {institution
               ? "Présentez votre établissement : l’équipe de la Fondation Sanady vous recontacte pour ouvrir votre espace dédié et inviter l'ensemble de votre corps professoral."
-              : "Les formations SANADY sont 100 % gratuites et réservées aux enseignants. Pour garantir la qualité et la bienveillance de la communauté, chaque compte est validé sur invitation."}
+              : "Les formations SANADY sont réservées aux enseignants. Pour garantir la qualité et la bienveillance de la communauté, chaque compte est validé sur invitation."}
           </p>
 
           <ol className="mt-8 space-y-4">

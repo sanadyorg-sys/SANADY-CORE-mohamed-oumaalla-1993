@@ -11,10 +11,11 @@ import { cn } from "@/lib/cn";
 export const SITE_LINKS = [
   { href: "/formations", label: "Formations" },
   { href: "/programmes", label: "Programmes" },
-  { href: "/ressources", label: "Ressources & Mallette" },
+  { href: "/partenariats", label: "Partenariats" },
+  { href: "/ressources", label: "Ressources" },
   { href: "/a-propos", label: "À propos" },
-  { href: "/verifier", label: "Vérifier un certificat" },
-];
+  { href: "/verifier", label: "Vérifier un certificat", short: "Vérifier" },
+] as Array<{ href: string; label: string; /** Shown between 1024 and 1279 px, where the full label would wrap. */ short?: string }>;
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -31,11 +32,20 @@ export function SiteNavLinks() {
               href={l.href}
               aria-current={isActive(pathname, l.href) ? "page" : undefined}
               className={cn(
-                "rounded-md px-3 py-2 text-body font-medium text-ink-700 transition-colors hover:bg-ink-100 hover:text-ink-900",
+                "whitespace-nowrap rounded-md px-2.5 py-2 text-body font-medium text-ink-700 transition-colors hover:bg-ink-100 hover:text-ink-900 xl:px-3",
                 isActive(pathname, l.href) && "text-accent-700",
               )}
             >
-              {l.label}
+              {l.short ? (
+                <>
+                  <span className="xl:hidden" aria-hidden>
+                    {l.short}
+                  </span>
+                  <span className="sr-only xl:not-sr-only">{l.label}</span>
+                </>
+              ) : (
+                l.label
+              )}
             </Link>
           </li>
         ))}

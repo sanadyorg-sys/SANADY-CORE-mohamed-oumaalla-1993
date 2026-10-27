@@ -98,7 +98,7 @@ export function SiteFooter({ supportEmail }: { supportEmail?: string | null }) {
           <p className="flex items-center gap-2">
             <span>Accès sur invitation</span>
             <span>·</span>
-            <span>Formations gratuites au Maroc</span>
+            <span>Formation continue des enseignants au Maroc</span>
           </p>
         </div>
       </div>

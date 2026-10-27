@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { Archive, CheckCircle2, EyeOff, MessageSquareWarning, Rocket, Send, TriangleAlert } from "lucide-react";
+import { Archive, ArrowRight, CheckCircle2, EyeOff, MessageSquareWarning, Rocket, Send, TriangleAlert } from "lucide-react";
 import {
   approveCourse,
   requestCourseChanges,
@@ -10,7 +11,7 @@ import {
   submitCourseForReview,
   type PublishResult,
 } from "@/server/actions/courses";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Field, Textarea } from "@/components/ui/field";
 import { FormMessage, SubmitButton } from "@/components/ui/form";
 import { ConfirmDialog, Dialog } from "@/components/ui/overlay";
@@ -133,14 +134,19 @@ export function CourseStatusActions({
         title={issues?.title ?? ""}
         description="Corrigez les points suivants, puis réessayez."
       >
-        <ul className="space-y-2">
+        <ul className="divide-y divide-line">
           {issues?.list.map((issue, i) => (
-            <li key={i} className="flex gap-2.5 text-body text-ink-800">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning-700" aria-hidden />
-              <span>
+            <li key={i} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 first:pt-0 last:pb-0">
+              <TriangleAlert className="size-4 shrink-0 text-warning-700" aria-hidden />
+              <span className="min-w-0 flex-1 text-body text-ink-800">
                 {issue.message}
                 {issue.label ? <span className="text-ink-500"> — « {issue.label} »</span> : null}
               </span>
+              {issue.href ? (
+                <Link href={issue.href} onClick={() => setIssues(null)} className={buttonClasses({ variant: "secondary", size: "sm", className: "ml-7 sm:ml-0" })}>
+                  {issue.fix ?? "Corriger"} <ArrowRight aria-hidden />
+                </Link>
+              ) : null}
             </li>
           ))}
         </ul>

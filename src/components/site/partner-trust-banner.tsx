@@ -14,7 +14,7 @@ import {
 import { BrandDots } from "@/components/brand/brand-decor";
 
 const PARTNER_METRICS = [
-  { value: "100%", label: "Gratuit et à but non-lucratif", icon: Sparkles, live: true },
+  { value: "100%", label: "En ligne, à votre rythme", icon: Sparkles, live: true },
   { value: "12", label: "Académies régionales du Royaume", icon: Building },
   { value: "70%", label: "Seuil de maîtrise pour valider", icon: Award },
   { value: "QR Code", label: "Certificat sécurisé et vérifiable", icon: ShieldCheck },

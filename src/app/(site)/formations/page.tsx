@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Search, SearchX, SlidersHorizontal } from "lucide-react";
 import { BrandDots } from "@/components/brand/brand-decor";
 import { CatalogCard } from "@/components/site/catalog-card";
+import { LearningPathsSection } from "@/components/site/learning-paths";
+import { SkillDiagnosticPreview } from "@/components/site/skill-diagnostic-preview";
 import { buttonClasses } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/motion";
 import { cn } from "@/lib/cn";
@@ -213,6 +215,14 @@ export default async function CatalogPage({ searchParams }: PageProps<"/formatio
           )}
         </section>
       </div>
+
+      {/* Learning paths and the method preview, for visitors browsing the whole catalogue. */}
+      {filtered ? null : (
+        <>
+          <LearningPathsSection />
+          <SkillDiagnosticPreview />
+        </>
+      )}
     </>
   );
 }

@@ -104,7 +104,12 @@ export function PartnershipApplicationForm({
     }
   }, [state]);
 
+  // Move focus to the step heading when the visitor changes step — never on
+  // first display, which would scroll the whole page down to the form.
+  const shownStep = useRef(step);
   useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
     headingRef.current?.focus({ preventScroll: false });
   }, [step]);
 

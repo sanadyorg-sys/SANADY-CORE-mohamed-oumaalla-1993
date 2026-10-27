@@ -116,6 +116,8 @@ const MESSAGES: Record<string, string> = {
   question_options_count: "Une question doit comporter entre 2 et 10 réponses.",
   question_correct_count:
     "Une question à réponse unique doit avoir exactement une bonne réponse ; une question à réponses multiples, au moins une.",
+  question_in_use:
+    "Des enseignants ont déjà répondu à cette question : vous pouvez corriger le texte de l’énoncé, des réponses et de l’explication, mais pas les réponses elles-mêmes, la bonne réponse, le type ni les points. Pour changer le fond, ajoutez une nouvelle question puis supprimez celle-ci (ses résultats seront conservés).",
   invalid_lesson_kind: "Type de leçon incompatible.",
   lesson_not_ready: "Cette leçon n’est pas encore prête.",
   invalid_payload: "Les données transmises ne sont pas valides.",

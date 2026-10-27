@@ -61,7 +61,7 @@ export default async function PublicCoursePage({ params }: PageProps<"/formation
   const learnHref = `/espace/formations/${course.id}`;
 
   const includes = [
-    videos ? { icon: PlayCircle, text: `${plural(videos, "vidéo explicative")}` } : null,
+    videos ? { icon: PlayCircle, text: `${plural(videos, "vidéo explicative", "vidéos explicatives")}` } : null,
     documents ? { icon: FileText, text: `${plural(documents, "document")} à télécharger` } : null,
     quizzes ? { icon: ClipboardCheck, text: `${plural(quizzes, "évaluation")} de module (seuil 70%)` } : null,
     { icon: Award, text: "Certificat vérifiable par QR code" },
@@ -82,8 +82,8 @@ export default async function PublicCoursePage({ params }: PageProps<"/formation
           </span>
         </div>
 
-        <p className="mt-4 text-[2rem] font-extrabold leading-none tracking-tight text-ink-900">Gratuit</p>
-        <p className="mt-1 text-label text-ink-500">Formation offerte aux enseignants par la Fondation Sanady</p>
+        <p className="mt-4 text-[1.75rem] font-extrabold leading-tight tracking-tight text-ink-900">Accès enseignant</p>
+        <p className="mt-1 text-label text-ink-500">Formation proposée aux enseignants par la Fondation Sanady</p>
 
         <div className="mt-6 flex flex-col gap-2.5">
           {viewer ? (

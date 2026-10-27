@@ -46,7 +46,7 @@ export function uploadToStorage({
         metadata: {
           bucketName: bucket,
           objectName: path,
-          contentType: file.type || "application/octet-stream",
+          contentType: fileType(file) || "application/octet-stream",
           cacheControl: "3600",
         },
         onError: (error) => reject(error),
@@ -70,6 +70,42 @@ export function uploadToStorage({
   };
 }
 
+/** Canonical type per extension: the storage buckets accept these exact values. */
+const TYPE_BY_EXTENSION: Record<string, string> = {
+  pdf: "application/pdf",
+  mp4: "video/mp4",
+  m4v: "video/mp4",
+  webm: "video/webm",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  zip: "application/zip",
+};
+
+/** Types browsers report for the same formats (Windows reports ZIP as x-zip-compressed). */
+const TYPE_ALIASES: Record<string, string> = {
+  "application/x-zip-compressed": "application/zip",
+  "application/x-zip": "application/zip",
+  "image/jpg": "image/jpeg",
+  "image/pjpeg": "image/jpeg",
+};
+
+/**
+ * The file's type as the storage bucket expects it. Browsers sometimes send an
+ * alias or nothing at all (Windows without the matching software installed):
+ * fall back to the extension.
+ */
+export function fileType(file: File): string {
+  const reported = TYPE_ALIASES[file.type] ?? file.type;
+  if (reported && reported !== "application/octet-stream") return reported;
+  const ext = file.name.slice(file.name.lastIndexOf(".") + 1).toLowerCase();
+  return TYPE_BY_EXTENSION[ext] ?? reported ?? "";
+}
+
 /** Safe object name: keeps the extension, removes accents and spaces. */
 export function safeFileName(name: string) {
   const dot = name.lastIndexOf(".");
@@ -86,20 +122,24 @@ export function safeFileName(name: string) {
 }
 
 /** Reads a local video file's duration (seconds) without uploading it. */
-export function readVideoDuration(file: File): Promise<number | null> {
+export function readVideoDuration(file: File, timeoutMs = 15_000): Promise<number | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const video = document.createElement("video");
-    video.preload = "metadata";
-    video.onloadedmetadata = () => {
-      const d = Number.isFinite(video.duration) ? Math.round(video.duration) : null;
+    let done = false;
+    // Some codecs never report metadata: give up after a while (duration stays unknown).
+    const finish = (d: number | null) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      video.removeAttribute("src");
       URL.revokeObjectURL(url);
       resolve(d && d > 0 ? d : null);
     };
-    video.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    video.preload = "metadata";
+    video.onloadedmetadata = () => finish(Number.isFinite(video.duration) ? Math.round(video.duration) : null);
+    video.onerror = () => finish(null);
     video.src = url;
   });
 }

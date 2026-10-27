@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -14,6 +15,7 @@ import {
 import { BrandDots, SmileUnderline } from "@/components/brand/brand-decor";
 import { buttonClasses } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/motion";
+import heroPhoto from "../../../../public/brand/photos/eleves-etablissement.jpg";
 
 export const metadata: Metadata = {
   title: "Programmes Éducatifs",
@@ -38,7 +40,7 @@ const POLES = [
       {
         icon: Users,
         name: "Formation continue des enseignants",
-        highlight: "500 enseignants formés",
+        highlight: "+1 200 enseignants formés",
         text: "Une dizaine de moments de formation par an, encadrés par plus d’une dizaine de superviseurs locaux et régionaux, pour moderniser les compétences des enseignants et accompagner les réformes de la Vision 2015-2030.",
       },
     ],
@@ -92,12 +94,22 @@ export default function ProgrammesPage() {
     <>
       {/* ─── Hero ─────────────────────────────────────────────────────────── */}
       <section className="relative isolate overflow-hidden bg-brand-900 text-white">
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-dots-light opacity-15" />
-        <div aria-hidden className="pointer-events-none absolute -right-32 -top-40 -z-10 size-[34rem] rounded-full bg-accent-600/20 blur-3xl" />
-        <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgb(15_23_42/0.85)_0%,rgb(15_23_42/0.95)_100%)]" />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-dots-light opacity-15" />
+        {/* Background photo (sanady.org), shown on the right; the text side stays dark for contrast. */}
+        <Image
+          src={heroPhoto}
+          alt=""
+          fill
+          priority
+          placeholder="blur"
+          sizes="100vw"
+          className="hero-bg-zoom -z-30 object-cover object-[70%_58%]"
+        />
+        <div aria-hidden className="absolute inset-0 -z-20 bg-gradient-to-r from-brand-900 via-brand-900/80 to-brand-900/15" />
+        <div aria-hidden className="absolute inset-x-0 bottom-0 -z-20 h-1/4 bg-gradient-to-t from-brand-900/45 to-transparent" />
+        <div aria-hidden className="bg-zellige-light pointer-events-none absolute inset-y-0 left-0 -z-10 w-1/2 [mask-image:linear-gradient(to_right,black,transparent)]" />
+        <div aria-hidden className="pointer-events-none absolute -left-32 -top-40 -z-10 size-[30rem] rounded-full bg-accent-600/15 blur-3xl" />
 
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
           <p className="inline-flex items-center gap-2 rounded-full border border-accent-500/40 bg-accent-500/10 px-3.5 py-1 text-label font-semibold text-accent-400">
             <Sparkles className="size-4" aria-hidden /> Programmes officiels Fondation Sanady
           </p>
@@ -105,7 +117,7 @@ export default function ProgrammesPage() {
             Trois pôles d’intervention pour la{" "}
             <SmileUnderline className="text-accent-400">réussite</SmileUnderline> de chaque élève.
           </h1>
-          <p className="mt-5 max-w-2xl text-[1.125rem] leading-relaxed text-brand-200">
+          <p className="mt-5 max-w-2xl text-[1.125rem] leading-relaxed text-white/80">
             Depuis 2009, la Fondation Sanady déploie un modèle global d’accompagnement éducatif dans les écoles publiques du Maroc,
             articulé autour de l’apprentissage, de l’avenir et de l’éveil.
           </p>
@@ -118,9 +130,9 @@ export default function ProgrammesPage() {
         <div className="relative mx-auto grid max-w-7xl grid-cols-2 divide-y divide-line sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x lg:divide-line">
           {[
             { value: "2009", label: "Année de création (utilité publique)" },
-            { value: "+220", label: "Enseignants formés par an" },
+            { value: "+1 200", label: "Enseignants formés" },
             { value: "10+", label: "Superviseurs pédagogiques terrain" },
-            { value: "100%", label: "Gratuit pour les enseignants" },
+            { value: "100%", label: "En ligne, à votre rythme" },
           ].map((item) => (
             <div key={item.label} className="px-4 py-8 text-center sm:px-6">
               <span className="block text-[2.25rem] font-extrabold tabular tracking-tight text-accent-700 sm:text-[2.75rem]">

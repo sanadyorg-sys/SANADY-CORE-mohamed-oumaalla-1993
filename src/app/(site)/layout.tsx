@@ -15,6 +15,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       >
         Aller au contenu
       </a>
+      <div aria-hidden className="scroll-progress" />
       <SiteHeader signedIn={Boolean(viewer)} />
       <main id="contenu" className="flex-1">
         {children}

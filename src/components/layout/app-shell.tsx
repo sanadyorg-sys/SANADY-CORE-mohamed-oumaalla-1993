@@ -64,12 +64,13 @@ export function AppShell({
 
   const sidebar = (onNavigate?: () => void) => (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 shrink-0 items-center px-5">
-        <Link href="/mon-espace" className="rounded-sm" onClick={onNavigate}>
-          <BrandLogo className="h-10" priority />
+      {/* Same height and divider as the top bar, logo centred. */}
+      <div className="flex h-16 shrink-0 items-center justify-center border-b border-line px-6">
+        <Link href="/mon-espace" className="-my-1 rounded-sm py-1" onClick={onNavigate} aria-label="Fondation Sanady — accueil de mon espace">
+          <BrandLogo className="h-10 translate-y-0.5" priority />
         </Link>
       </div>
-      <div className="px-3 pb-4">
+      <div className="px-3 pb-4 pt-4">
         <ContextSwitcher contexts={contexts} current={current} fallbackLabel={areaTitle[area]} />
       </div>
       <div className="flex-1 overflow-y-auto px-3 pb-6">
@@ -95,7 +96,7 @@ export function AppShell({
       <aside className="sticky top-0 hidden h-dvh border-r border-line bg-surface lg:block print:hidden">{sidebar()}</aside>
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-surface/85 sm:px-6 lg:px-8 print:hidden">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-surface/85 sm:px-6 lg:px-8 print:hidden">
           <Drawer
             open={mobileOpen}
             onOpenChange={setMobileOpen}

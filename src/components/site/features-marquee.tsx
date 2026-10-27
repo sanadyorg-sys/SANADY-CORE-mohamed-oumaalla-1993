@@ -5,7 +5,7 @@ import {
   ClipboardCheck,
   Clock,
   FileText,
-  Gift,
+  GraduationCap,
   type LucideIcon,
   MessageSquareText,
   MonitorSmartphone,
@@ -28,7 +28,7 @@ const ROW_A: Item[] = [
 const ROW_B: Item[] = [
   { icon: MonitorSmartphone, label: "Téléphone, tablette, ordinateur" },
   { icon: Clock, label: "À votre rythme" },
-  { icon: Gift, label: "100 % gratuit" },
+  { icon: GraduationCap, label: "Conçu pour les enseignants" },
   { icon: Award, label: "Progression enregistrée" },
   { icon: Building2, label: "Suivi pour les établissements" },
   { icon: ShieldCheck, label: "Données protégées" },
@@ -65,9 +65,9 @@ export function FeaturesMarquee() {
   return (
     <section aria-labelledby="atouts" className="overflow-hidden bg-ink-25 py-14 sm:py-16">
       <div className="mx-auto max-w-3xl px-4 text-center">
-        <p className="text-label font-bold uppercase tracking-wider text-accent-700">Apprendre gratuitement</p>
+        <p className="text-label font-bold uppercase tracking-wider text-accent-700">Apprendre autrement</p>
         <h2 id="atouts" className="mt-2 text-[1.625rem] font-extrabold leading-tight tracking-tight text-ink-900 sm:text-[1.875rem]">
-          Tout ce qu’il faut pour progresser, sans frais
+          Tout ce qu’il faut pour progresser, à votre rythme
         </h2>
       </div>
       <div className="mt-8 space-y-4">

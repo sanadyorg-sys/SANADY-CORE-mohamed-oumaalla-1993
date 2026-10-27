@@ -226,7 +226,11 @@ function QuestionDialog({ quiz, question, index }: { quiz: Quiz; question?: Edit
       }}
       size="lg"
       title={question ? `Modifier la question ${index}` : "Nouvelle question"}
-      description="Les bonnes réponses ne sont jamais transmises aux enseignants avant la correction."
+      description={
+        question
+          ? "Si des enseignants ont déjà répondu à cette question, seuls les textes (énoncé, libellés, explication) peuvent être corrigés."
+          : "Les bonnes réponses ne sont jamais transmises aux enseignants avant la correction."
+      }
       trigger={
         question ? (
           <Button variant="ghost" size="icon-sm" aria-label={`Modifier la question ${index}`}>

@@ -31,7 +31,12 @@ export function Reveal({
     const el = ref.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    if (el.getBoundingClientRect().top < window.innerHeight * 0.92) return;
+    // Already on screen or scrolled past (e.g. the page jumped to an anchor):
+    // make sure it is visible, even if an earlier run had hidden it.
+    if (el.getBoundingClientRect().top < window.innerHeight * 0.92) {
+      setState("shown");
+      return;
+    }
 
     setState("pending");
     const io = new IntersectionObserver(

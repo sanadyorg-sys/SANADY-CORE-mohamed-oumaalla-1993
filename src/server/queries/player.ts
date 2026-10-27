@@ -96,6 +96,7 @@ async function resolveMedia(lesson: Lesson): Promise<LessonMedia> {
     if (source.type === "unavailable") {
       return {
         kind: "unavailable",
+        lessonKind: "video",
         message:
           source.reason === "not_configured"
             ? "La diffusion vidéo sécurisée n’est pas configurée sur ce serveur. Contactez l’administration SANADY."
@@ -105,7 +106,7 @@ async function resolveMedia(lesson: Lesson): Promise<LessonMedia> {
     return { kind: "video", source };
   }
   if (!lesson.pdf_path || !lesson.pdf_page_count) {
-    return { kind: "unavailable", message: "Le document de cette leçon n’est pas encore disponible." };
+    return { kind: "unavailable", lessonKind: "pdf", message: "Le document de cette leçon n’est pas encore disponible." };
   }
   const [url, downloadUrl] = await Promise.all([
     signedMediaUrl(lesson.pdf_path, 3600),
@@ -113,5 +114,5 @@ async function resolveMedia(lesson: Lesson): Promise<LessonMedia> {
   ]);
   return url
     ? { kind: "pdf", url, pageCount: lesson.pdf_page_count, downloadUrl }
-    : { kind: "unavailable", message: "Le document n’a pas pu être chargé. Veuillez réessayer." };
+    : { kind: "unavailable", lessonKind: "pdf", message: "Le document n’a pas pu être chargé. Veuillez réessayer." };
 }

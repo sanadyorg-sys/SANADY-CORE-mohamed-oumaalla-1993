@@ -181,7 +181,7 @@ const LEARNING_PATHS: LearningPath[] = [
         title: "Concevoir des supports interactifs stimulants",
         duration: "2 h 00",
         description: "Élaborer facilement des fiches numériques, schémas animés et exercices autocorrectifs.",
-        highlights: ["Outils gratuits et ergonomiques", "Conception visuelle accessible", "Formats mobiles pour les élèves"],
+        highlights: ["Outils simples et ergonomiques", "Conception visuelle accessible", "Formats mobiles pour les élèves"],
         formats: [
           { type: "video", label: "4 ateliers pratiques" },
           { type: "pdf", label: "Modèles téléchargeables" },

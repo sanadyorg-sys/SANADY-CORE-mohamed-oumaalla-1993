@@ -446,6 +446,271 @@
   body { background: #fff; }
 }
 
+/* ─── Signature effects (components/site/effects.tsx) ──────────────────────
+   Themed on learning: a progress bar, notebook doodles, a highlighter, a
+   course path that ticks itself off and a burst of Sanady dots for the
+   certificate. data-inview is absent for the finished state (server render,
+   no JS, reduced motion), "pending" before playing, "shown" once played. */
+
+/* Reading progress, like a course progress bar (scroll-driven, no JS). */
+.scroll-progress {
+  display: none;
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 70;
+  height: 3px;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, var(--color-accent-400), var(--color-accent-600));
+  pointer-events: none;
+}
+@supports (animation-timeline: scroll()) {
+  .scroll-progress {
+    display: block;
+    animation: scroll-progress linear both;
+    animation-timeline: scroll(root);
+  }
+}
+@keyframes scroll-progress {
+  to { transform: scaleX(1); }
+}
+
+/* Notebook doodles: drawn once, then floating. */
+.doodle path {
+  stroke-dasharray: 1;
+  animation: doodle-draw 1.8s cubic-bezier(0.23, 1, 0.32, 1) var(--doodle-delay, 0ms) both;
+}
+.doodle {
+  animation: doodle-float 9s ease-in-out calc(var(--doodle-delay, 0ms) + 1.8s) infinite;
+}
+@keyframes doodle-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes doodle-float {
+  50% { translate: 0 -9px; }
+}
+
+/* Highlighter stroke behind key words. */
+.highlighter {
+  background-image: linear-gradient(100deg, transparent 0%, rgb(255 201 168 / 0.9) 3%, rgb(255 160 113 / 0.75) 97%, transparent 100%);
+  background-repeat: no-repeat;
+  background-position: 0 88%;
+  background-size: 100% 0.4em;
+  padding-inline: 0.06em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.highlighter[data-inview="shown"] {
+  transition: background-size 1.1s cubic-bezier(0.23, 1, 0.32, 1) 0.15s;
+}
+.highlighter-dark {
+  background-image: linear-gradient(100deg, transparent 0%, rgb(249 90 5 / 0.5) 3%, rgb(249 90 5 / 0.38) 97%, transparent 100%);
+}
+.highlighter[data-inview="pending"] {
+  background-size: 0% 0.4em;
+}
+
+/* Light following the pointer in dark sections. */
+.pointer-glow {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  background: radial-gradient(560px circle at var(--gx, 50%) var(--gy, 50%), rgb(249 90 5 / 0.17), transparent 62%);
+}
+
+/* Pieces that grow or pop in when their container is in view. */
+[data-inview="shown"] .grow-bar {
+  transform-origin: left;
+  transition: transform 1.2s cubic-bezier(0.23, 1, 0.32, 1) calc(0.35s + var(--i, 0) * 0.15s);
+}
+[data-inview="pending"] .grow-bar {
+  transform: scaleX(0);
+}
+[data-inview="shown"] .grow-ring {
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.23, 1, 0.32, 1) 0.3s;
+}
+[data-inview="pending"] .grow-ring {
+  stroke-dashoffset: 1 !important;
+}
+[data-inview="shown"] .pop-in {
+  transition:
+    opacity 0.5s ease,
+    transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  transition-delay: calc(0.15s + var(--i, 0) * 0.12s);
+}
+[data-inview="pending"] .pop-in {
+  opacity: 0;
+  transform: translateY(12px) scale(0.97);
+}
+
+/* Course path: the line fills, each step is ticked off in turn. */
+[data-inview="shown"] .path-fill {
+  transform-origin: left;
+  transition: transform 2.2s cubic-bezier(0.65, 0, 0.35, 1) 0.3s;
+}
+[data-inview="pending"] .path-fill {
+  transform: scaleX(0);
+}
+[data-inview="shown"] .path-icon {
+  transition:
+    background-color 0.5s ease,
+    transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  transition-delay: calc(0.35s + var(--i, 0) * 0.55s);
+}
+[data-inview="pending"] .path-icon {
+  background-color: var(--color-brand-800);
+}
+[data-inview="shown"] .path-check {
+  transition:
+    opacity 0.3s ease,
+    transform 0.45s cubic-bezier(0.23, 1, 0.32, 1);
+  transition-delay: calc(0.5s + var(--i, 0) * 0.55s);
+}
+[data-inview="pending"] .path-check {
+  opacity: 0;
+  transform: scale(0.3);
+}
+[data-inview="shown"] .path-finale {
+  animation: pulse-glow 2.4s ease-in-out 2.4s 2;
+}
+
+/* Certificate: a burst of Sanady dots (plays only after scrolling into view). */
+.confetti {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--c, var(--color-accent-500));
+  opacity: 0;
+  pointer-events: none;
+}
+[data-inview="shown"] .confetti {
+  animation: confetti-burst 1.4s cubic-bezier(0.2, 0.7, 0.3, 1) 2.25s both;
+}
+@keyframes confetti-burst {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.4); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--r, 200deg)) scale(1); }
+}
+
+/* Sheen across the certificate badge (the element must be positioned). */
+.cert-shine {
+  overflow: hidden;
+}
+.cert-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgb(249 90 5 / 0.14) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: cert-shine 5s ease-in-out 2.5s infinite;
+  pointer-events: none;
+}
+@keyframes cert-shine {
+  0%, 70% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+/* Discreet Moroccan touch: a zellige-style eight-point star (khatam) lattice,
+   drawn in the brand orange at low opacity. Decorative texture only. */
+.bg-zellige {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23f95a05' stroke-opacity='0.22' stroke-width='1'%3E%3Cpath d='M14 14h20v20H14z'/%3E%3Cpath d='M24 9.86 38.14 24 24 38.14 9.86 24z'/%3E%3Cpath d='M0 0l9.86 9.86M48 0l-9.86 9.86M0 48l9.86-9.86M48 48l-9.86-9.86'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 48px 48px;
+}
+.bg-zellige-light {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.08' stroke-width='1'%3E%3Cpath d='M14 14h20v20H14z'/%3E%3Cpath d='M24 9.86 38.14 24 24 38.14 9.86 24z'/%3E%3Cpath d='M0 0l9.86 9.86M48 0l-9.86 9.86M0 48l9.86-9.86M48 48l-9.86-9.86'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 48px 48px;
+}
+
+/* Page hero photo: a very slow zoom-out on load (once). */
+.hero-bg-zoom {
+  animation: hero-bg-zoom 14s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes hero-bg-zoom {
+  from { transform: scale(1.1); }
+  to { transform: scale(1); }
+}
+
+/* Audience panel: the content eases in when another audience is chosen. */
+.audience-panel {
+  animation: audience-in 0.45s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes audience-in {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+/* Vision sentence, revealed word by word. */
+.word-reveal > span {
+  display: inline-block;
+  white-space: pre;
+}
+[data-inview="shown"] .word-reveal > span {
+  transition:
+    opacity 0.6s ease,
+    transform 0.7s cubic-bezier(0.23, 1, 0.32, 1),
+    filter 0.7s ease;
+  transition-delay: calc(0.1s + var(--w, 0) * 70ms);
+}
+[data-inview="pending"] .word-reveal > span {
+  opacity: 0.12;
+  transform: translateY(0.35em);
+  filter: blur(6px);
+}
+
+/* Signature band: giant words, alternately filled and outlined. */
+.signature-track {
+  gap: 0;
+  padding-right: 0;
+  animation-duration: 38s;
+  font-size: clamp(2rem, 5.5vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--color-accent-600);
+}
+
+/* Pillars: line showing the automatic rotation (6 s per pillar). */
+.pillar-timer {
+  animation: pillar-timer 6s linear both;
+}
+@keyframes pillar-timer {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Hero slideshow (inspired by sanady.org's slider): slow crossfade with a gentle zoom. */
+.hero-slide {
+  animation: hero-slide var(--slide-total, 14s) ease-in-out infinite;
+  animation-delay: var(--slide-delay, 0s);
+  opacity: 0;
+}
+.hero-slide:first-child {
+  opacity: 1;
+}
+@keyframes hero-slide {
+  0% { opacity: 0; transform: scale(1.12); }
+  8% { opacity: 1; }
+  50% { opacity: 1; }
+  58% { opacity: 0; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signature-track { animation: none; }
+  .hero-slide { animation: none; }
+  .hero-slide:not(:first-child) { display: none; }
+  .scroll-progress,
+  .confetti { display: none; }
+  .doodle,
+  .doodle path,
+  .cert-shine::after { animation: none; }
+}
+
 /* ─── Media range inputs (video seek bar and volume) ───────────────────── */
 .video-range::-webkit-slider-runnable-track {
   height: 4px;

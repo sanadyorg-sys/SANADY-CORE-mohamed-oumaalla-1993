@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Award, ClipboardCheck, PlayCircle } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import teachersPhoto from "../../../public/brand/photos/atelier-enseignants.jpg";
 import slogan from "../../../public/brand/sanady-phrase.png";
 
 const FEATURES = [
@@ -14,7 +15,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       {/* ─── Brand panel (large screens): full-height photograph ─────────── */}
-      <aside className="relative hidden overflow-hidden bg-brand-800 lg:flex lg:min-h-dvh lg:flex-col lg:justify-between lg:p-10 xl:p-12">
+      <aside className="relative isolate hidden overflow-hidden bg-brand-800 lg:flex lg:min-h-dvh lg:flex-col lg:justify-between lg:p-10 xl:p-12">
+        {/* Teachers in a Foundation workshop (sanady.org), darkened so the text stays readable. */}
+        <Image src={teachersPhoto} alt="" fill priority placeholder="blur" sizes="(min-width: 1024px) 55vw, 1px" className="-z-20 object-cover" />
+        <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-brand-900 via-brand-900/80 to-brand-900/55" />
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-dots-light opacity-15" />
         <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 size-[36rem] rounded-full bg-accent-600/15 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-24 size-[30rem] rounded-full bg-accent-500/10 blur-3xl" />

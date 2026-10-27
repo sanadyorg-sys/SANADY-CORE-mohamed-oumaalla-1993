@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef } from "react";
-import { Download } from "lucide-react";
+import { Download, FileText, PlayCircle } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 import { Alert } from "@/components/ui/surface";
 import { Skeleton } from "@/components/ui/feedback";
@@ -19,7 +19,7 @@ const PdfReader = dynamic(() => import("./pdf-reader"), {
 export type LessonMedia =
   | { kind: "video"; source: { type: "mp4" | "hls"; url: string; poster?: string } }
   | { kind: "pdf"; url: string; pageCount: number; downloadUrl?: string | null }
-  | { kind: "unavailable"; message: string };
+  | { kind: "unavailable"; message: string; /** Keeps the media's frame (16:9 or page) in the layout. */ lessonKind?: "video" | "pdf" };
 
 /**
  * Hosts the lesson media and reacts to progress updates from the server
@@ -66,7 +66,25 @@ export function LessonExperience({
   );
 
   if (media.kind === "unavailable") {
-    return <Alert tone="warning" title="Contenu indisponible">{media.message}</Alert>;
+    if (!media.lessonKind) return <Alert tone="warning" title="Contenu indisponible">{media.message}</Alert>;
+    const video = media.lessonKind === "video";
+    const Icon = video ? PlayCircle : FileText;
+    return (
+      <div
+        role="status"
+        className={
+          video
+            ? "relative flex aspect-video w-full flex-col items-center justify-center overflow-hidden rounded-2xl bg-brand-900 p-6 text-center text-white"
+            : "relative flex aspect-[4/3] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-line bg-ink-50 p-6 text-center sm:aspect-[16/10]"
+        }
+      >
+        {video ? <div aria-hidden className="absolute inset-0 bg-dots-light opacity-60" /> : null}
+        <span className={video ? "relative flex size-16 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20" : "flex size-16 items-center justify-center rounded-2xl bg-surface text-ink-500 shadow-sm ring-1 ring-line"}>
+          <Icon className="size-7" aria-hidden />
+        </span>
+        <p className={video ? "relative mt-4 max-w-md text-body text-white/80" : "mt-4 max-w-md text-body text-ink-600"}>{media.message}</p>
+      </div>
+    );
   }
 
   if (media.kind === "video") {

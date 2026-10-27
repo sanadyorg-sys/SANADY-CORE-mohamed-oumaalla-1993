@@ -167,12 +167,14 @@ test.describe("public website", () => {
 });
 
 test.describe("partnerships portal (hidden until approved)", () => {
-  test("is not indexed and not linked from the menu", async ({ page }) => {
+  // Linked from the main menu since 27/10/2026 (owner's decision), still kept out of search engines.
+  test("is not indexed but is reachable from the menu", async ({ page }, testInfo) => {
     await page.goto("/partenariats");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Ensemble, construisons un avenir éducatif meilleur.");
     await page.goto("/");
-    await expect(page.locator('a[href="/partenariats"]')).toHaveCount(0);
+    if (testInfo.project.name === "mobile") await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+    await expect(page.locator('a[href="/partenariats"]').first()).toBeAttached();
   });
 
   test("validates each step before moving on", async ({ page }) => {
