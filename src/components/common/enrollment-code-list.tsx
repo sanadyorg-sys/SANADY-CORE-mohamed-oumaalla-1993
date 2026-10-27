@@ -32,7 +32,7 @@ export function EnrollmentCodeList({ codes, institutionId, joinUrl }: { codes: E
         const active = state.label === "Actif";
         return (
           <li key={c.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
-            <div className="min-w-[200px] flex-1">
+            <div className="min-w-0 flex-1 basis-[200px]">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-section font-semibold tracking-[0.08em] text-ink-900">{c.code}</span>
                 <Badge tone={state.tone}>{state.label}</Badge>
@@ -48,7 +48,7 @@ export function EnrollmentCodeList({ codes, institutionId, joinUrl }: { codes: E
               </p>
             </div>
             {active ? (
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
                 <CopyButton value={`${c.code}`} label="Copier le code" variant="ghost" />
                 <CopyButton value={joinUrl} label="Copier le lien" variant="ghost" copiedLabel="Lien copié" />
                 <ActionButton

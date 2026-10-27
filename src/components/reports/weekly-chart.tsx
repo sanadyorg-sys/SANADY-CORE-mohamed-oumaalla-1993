@@ -60,12 +60,12 @@ export function WeeklyChart({
   const peak = points.reduce((best, p, i) => (p.value > (points[best]?.value ?? -1) ? i : best), 0);
 
   return (
-    <figure className="rounded-xl border border-line bg-surface p-5">
+    <figure className="min-w-0 rounded-xl border border-line bg-surface p-5">
       <figcaption className="mb-3">
         <p className="text-card font-semibold text-ink-900">{title}</p>
         {description ? <p className="text-caption text-ink-500">{description}</p> : null}
       </figcaption>
-      <div ref={ref} className="relative">
+      <div ref={ref} className="relative [contain:inline-size]">
         {width > 0 ? (
           <svg width={width} height={HEIGHT} role="img" aria-label={`${title} : ${total} au total sur la période. Détail dans le tableau ci-dessous.`}>
             {ticks.map((t) => (
