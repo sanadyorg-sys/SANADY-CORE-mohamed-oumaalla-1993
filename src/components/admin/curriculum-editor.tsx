@@ -18,6 +18,7 @@ import {
 import {
   createLesson,
   createModule,
+  createModuleQuiz,
   removeLesson,
   removeModule,
   reorderLessons,
@@ -230,7 +231,23 @@ export function CurriculumEditor({ courseId, modules }: { courseId: string; modu
                       )}
                     </Link>
                   </li>
-                ) : null}
+                ) : (
+                  // A module without its evaluation could never be submitted: let the author add it.
+                  <li id={`evaluation-${m.id}`} className="flex flex-wrap items-center gap-3 border-t-2 border-dashed border-warning-200 bg-warning-50/70 px-4 py-3.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-warning-50 text-warning-700 ring-1 ring-inset ring-warning-200">
+                      <ClipboardCheck className="size-4" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-caption font-semibold uppercase tracking-wider text-ink-500">Évaluation du module</p>
+                      <p className="mt-0.5 flex items-center gap-1 text-caption font-medium text-warning-700">
+                        <TriangleAlert className="size-3.5 shrink-0" aria-hidden /> Ce module n’a pas d’évaluation : créez-la, puis ajoutez au moins une question.
+                      </p>
+                    </div>
+                    <ActionButton variant="accent" action={createModuleQuiz.bind(null, courseId, m.id)}>
+                      <Plus aria-hidden /> Créer l’évaluation
+                    </ActionButton>
+                  </li>
+                )}
               </ul>
             </Card>
           </li>

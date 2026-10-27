@@ -138,6 +138,8 @@ async function describeIssues(supabase: Awaited<ReturnType<typeof createClient>>
     if (i.code === "module_no_lessons") return { ...issue, href: `${base}/programme`, fix: "Ajouter une leçon" };
     if (i.code === "lesson_no_content" && i.lesson_id) return { ...issue, href: `${base}/programme/lecons/${i.lesson_id}`, fix: "Téléverser le contenu" };
     if (i.code === "module_no_quiz" && quiz) return { ...issue, href: `${base}/programme/evaluations/${quiz}`, fix: "Ajouter des questions" };
+    // No evaluation at all: it is created from the programme page.
+    if (i.code === "module_no_quiz" && i.module_id) return { ...issue, href: `${base}/programme#evaluation-${i.module_id}`, fix: "Créer l’évaluation" };
     if (i.code === "question_invalid" && quiz) return { ...issue, href: `${base}/programme/evaluations/${quiz}`, fix: "Corriger la question" };
     return issue;
   });
@@ -298,6 +300,27 @@ export async function createModule(_prev: ActionState, formData: FormData): Prom
 
   revalidateCourse(course_id);
   return { ok: true, message: "Module ajouté avec son évaluation." };
+}
+
+/** Adds the evaluation of a module that has none (e.g. created before the evaluation became automatic). */
+export async function createModuleQuiz(courseId: string, moduleId: string): Promise<ActionState> {
+  await requireStaff();
+  if (!uuidSchema.safeParse(courseId).success || !uuidSchema.safeParse(moduleId).success) return { ok: false, message: messageFor("not_found") };
+  const supabase = await createClient();
+  const { data: mod } = await supabase
+    .from("modules")
+    .select("id, title, quizzes(id)")
+    .eq("id", moduleId)
+    .eq("course_id", courseId)
+    .is("archived_at", null)
+    .maybeSingle();
+  const row = mod as { id: string; title: string; quizzes: Array<{ id: string }> } | null;
+  if (!row) return { ok: false, message: NOT_SAVED };
+  if (row.quizzes.length) return { ok: true, message: "Ce module a déjà son évaluation." };
+  const { error } = await supabase.from("quizzes").insert({ module_id: moduleId, course_id: courseId, title: `Évaluation — ${row.title}` });
+  if (error) return { ok: false, message: errorMessage(error) };
+  revalidateCourse(courseId);
+  return { ok: true, message: "Évaluation créée : ajoutez-y au moins une question." };
 }
 
 export async function updateModule(_prev: ActionState, formData: FormData): Promise<ActionState> {
