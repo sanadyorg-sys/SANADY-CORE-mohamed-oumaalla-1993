@@ -344,7 +344,12 @@ await call(u.coord, "save_partner_contact", ["null", lit(orgHorizon), json({ ful
 for (const s of ["first_contact", "interest_confirmed", "proposal_received", "evaluation", "negotiation"]) {
   await call(u.coord, "set_partner_status", [lit(orgHorizon), lit(s), "null"]);
 }
-await call(u.approver, "set_partner_status", [lit(orgHorizon), lit("institutional_validation"), lit("Recommandée par la direction des partenariats")]);
+// Four eyes: whoever submits a partnership for validation never signs it. The
+// demo has a single partnership manager (who is also the approver), so the
+// submission is recorded directly, without a person.
+await sql(`update public.partner_organizations set status = 'institutional_validation', updated_at = now() where id = ${lit(orgHorizon)};
+  insert into public.partnership_status_history (organization_id, from_status, to_status, note)
+  values (${lit(orgHorizon)}, 'negotiation', 'institutional_validation', 'Recommandée par la direction des partenariats');`);
 await call(u.approver, "set_partner_status", [lit(orgHorizon), lit("agreement_signed"), lit("Convention validée")]);
 await call(u.coord, "set_partner_status", [lit(orgHorizon), lit("implementation"), "null"]);
 await call(u.coord, "add_partnership_note", ["null", lit(orgHorizon), lit("Point d’étape trimestriel fixé au premier lundi de chaque trimestre.")]);

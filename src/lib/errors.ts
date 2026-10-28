@@ -23,7 +23,7 @@ const MESSAGES: Record<string, string> = {
   tenant_managed: "Le statut d’un espace entreprise se change depuis SANADY Enterprise.",
   checklist_incomplete: "Toutes les étapes de mise en place doivent être terminées avant l’activation.",
   contract_expired: "La date de fin du contrat est passée : mettez à jour les dates avant d’activer l’espace.",
-  four_eyes: "Une autre personne doit confirmer : vous ne pouvez pas confirmer ce que vous avez vous-même proposé ou enregistré.",
+  four_eyes: "Une autre personne doit approuver ou confirmer : vous ne pouvez pas valider ce que vous avez vous-même rédigé, proposé ou enregistré.",
   deletion_prerequisites: "Avant de proposer la suppression : autorisez l’export, fixez la date de suppression et fermez l’espace.",
   deletion_blocked: "La suppression ne peut pas encore être confirmée : voyez ce qui manque sur la carte « Suppression des données ».",
   deletion_date_required: "Fixez d’abord la date de suppression prévue des données (contrat et obligations légales).",
