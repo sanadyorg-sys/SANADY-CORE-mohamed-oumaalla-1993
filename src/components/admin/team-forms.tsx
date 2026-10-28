@@ -15,7 +15,7 @@ export function PlatformRoleForm() {
       <Field label="Adresse e-mail du compte" hint="La personne doit déjà avoir un compte SANADY." error={state.fieldErrors?.email}>
         <Input name="email" type="email" autoComplete="off" required maxLength={254} />
       </Field>
-      <Field label="Rôle" error={state.fieldErrors?.role}>
+      <Field label="Rôle" hint="Changer ou retirer le rôle d’un approbateur lui retire aussi l’habilitation d’approuver." error={state.fieldErrors?.role}>
         <Select name="role" defaultValue="trainer">
           <option value="trainer">Formateur — conçoit les formations qui lui sont confiées</option>
           <option value="training_manager">Responsable pédagogique — relit, publie, suit les résultats</option>
