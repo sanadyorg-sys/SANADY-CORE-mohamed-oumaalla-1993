@@ -77,6 +77,15 @@ describe("validation", () => {
     expect(safeRedirectPath("//evil.example")).toBe("/");
     expect(safeRedirectPath("https://evil.example")).toBe("/");
     expect(safeRedirectPath("/\\evil.example")).toBe("/");
+    // Browsers drop tabs and line breaks: these would become "//evil.example".
+    expect(safeRedirectPath("/\t/evil.example")).toBe("/");
+    expect(safeRedirectPath("/\n/evil.example")).toBe("/");
+    expect(safeRedirectPath("/\r\n/evil.example")).toBe("/");
+    expect(safeRedirectPath(decodeURIComponent("/%09/evil.example"))).toBe("/");
+    expect(safeRedirectPath("/a\\b")).toBe("/");
+    expect(safeRedirectPath("javascript:alert(1)")).toBe("/");
+    expect(safeRedirectPath("/admin?onglet=x#haut")).toBe("/admin?onglet=x#haut");
+    expect(safeRedirectPath("/securite/verification?suite=/admin")).toBe("/securite/verification?suite=/admin");
   });
 });
 

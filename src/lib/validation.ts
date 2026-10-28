@@ -52,7 +52,17 @@ export function parseInput<T extends z.ZodType>(schema: T, input: FormData | Rec
 
 /** Accepts only same-site relative paths (prevents open redirects). */
 export function safeRedirectPath(value: unknown, fallback = "/"): string {
-  if (typeof value !== "string") return fallback;
-  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return fallback;
-  return value;
+  if (typeof value !== "string" || !value.startsWith("/")) return fallback;
+  // Browsers drop tabs and line breaks and read "\" as "/", so "/\t/evil.example" would become "//evil.example".
+  if (/[\u0000-\u001f\u007f\\]/.test(value)) return fallback;
+  // Resolve it the way the browser will: it must stay on this site.
+  const base = "https://sanady.invalid";
+  let url: URL;
+  try {
+    url = new URL(value, base);
+  } catch {
+    return fallback;
+  }
+  if (url.origin !== base) return fallback;
+  return `${url.pathname}${url.search}${url.hash}`;
 }
