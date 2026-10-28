@@ -8,9 +8,13 @@ import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/types";
 import { emailSchema, nameSchema, optionalText, parseInput, passwordSchema, safeRedirectPath, checkboxSchema } from "@/lib/validation";
 import { getViewer, homeFor } from "@/server/auth";
-import { clientIp, rateLimit } from "@/server/rate-limit";
+import { clientIp, rateLimit, rateLimitReached } from "@/server/rate-limit";
 
 const RATE_MESSAGE = "Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.";
+/** Wrong passwords for one account from one connection, per 15 minutes. */
+const LOGIN_FAILURES_PER_CONNECTION = 8;
+/** Wrong passwords for one account from all connections, per hour (guessing from many places). */
+const LOGIN_FAILURES_PER_ACCOUNT = 100;
 
 export async function signIn(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = parseInput(
@@ -20,14 +24,24 @@ export async function signIn(_prev: ActionState, formData: FormData): Promise<Ac
   if (!parsed.ok) return { ok: false, fieldErrors: parsed.fieldErrors };
   const { email, password, suite } = parsed.data;
 
+  // Limits that cannot be turned against the account's owner: someone typing
+  // wrong passwords only blocks their own connection. Failures alone count
+  // towards the account, so the owner signing in from elsewhere is not
+  // blocked unless the account is attacked from many connections at once.
   const ip = await clientIp();
+  const failuresFromHere = `login:fail:${email}:${ip}`;
+  const failuresEverywhere = `login:fail:${email}`;
   const allowed =
-    (await rateLimit(`login:ip:${ip}`, 30, 15 * 60)) && (await rateLimit(`login:email:${email}`, 8, 15 * 60));
+    (await rateLimit(`login:ip:${ip}`, 30, 15 * 60)) &&
+    !(await rateLimitReached(failuresFromHere, LOGIN_FAILURES_PER_CONNECTION, 15 * 60)) &&
+    !(await rateLimitReached(failuresEverywhere, LOGIN_FAILURES_PER_ACCOUNT, 60 * 60));
   if (!allowed) return { ok: false, message: RATE_MESSAGE };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
+    await rateLimit(failuresFromHere, LOGIN_FAILURES_PER_CONNECTION, 15 * 60);
+    await rateLimit(failuresEverywhere, LOGIN_FAILURES_PER_ACCOUNT, 60 * 60);
     // Same message whatever the cause: no account enumeration.
     return { ok: false, message: "Adresse e-mail ou mot de passe incorrect." };
   }
