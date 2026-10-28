@@ -336,6 +336,8 @@ export interface AttemptResult {
   remaining_attempts: number | null;
   voided: boolean;
   answers_revealed: boolean;
+  /** Right or wrong per question: shown with the answers, or to someone following the learner. */
+  details_shown: boolean;
   certificate_issued?: boolean;
   questions: Array<{
     id: UUID;
@@ -343,8 +345,9 @@ export interface AttemptResult {
     prompt: string;
     points: number;
     explanation: string | null;
-    is_correct: boolean;
-    points_awarded: number;
+    /** null while the details are hidden from the learner. */
+    is_correct: boolean | null;
+    points_awarded: number | null;
     selected_option_ids: UUID[];
     options: Array<{ id: UUID; label: string; is_correct?: boolean }>;
   }>;

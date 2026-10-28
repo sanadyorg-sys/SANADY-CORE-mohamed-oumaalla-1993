@@ -43,14 +43,15 @@ export function AttemptQuestions({ result }: { result: AttemptResult }) {
         <li key={q.id}>
           <Card className="p-5">
             <div className="flex items-start gap-3">
-              {q.is_correct ? (
+              {q.is_correct === null ? null : q.is_correct ? (
                 <CircleCheck className="mt-0.5 size-5 shrink-0 text-success-600" aria-label="Réponse correcte" />
               ) : (
                 <CircleX className="mt-0.5 size-5 shrink-0 text-danger-600" aria-label="Réponse incorrecte" />
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-caption font-medium uppercase tracking-wide text-ink-500">
-                  Question {i + 1} · {q.points_awarded}/{q.points} point{q.points > 1 ? "s" : ""}
+                  Question {i + 1} · {q.points_awarded === null ? "" : `${q.points_awarded}/`}
+                  {q.points} point{q.points > 1 ? "s" : ""}
                 </p>
                 <p className="mt-1 whitespace-pre-line text-card font-semibold text-ink-900">{q.prompt}</p>
                 <ul className="mt-3 space-y-2">

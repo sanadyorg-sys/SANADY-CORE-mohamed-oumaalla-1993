@@ -83,13 +83,13 @@ export default async function AttemptResultPage(
       ) : null}
       {!result.passed && !result.answers_revealed ? (
         <Alert tone="info" className="mt-6">
-          Les bonnes réponses ne sont pas affichées afin que vos prochaines tentatives restent représentatives. Appuyez-vous sur les
-          explications et revoyez les leçons du module.
+          Les bonnes réponses, le détail par question et les explications ne sont pas affichés afin que vos prochaines tentatives
+          restent représentatives. Revoyez les leçons du module avant de recommencer.
         </Alert>
       ) : null}
 
       <section className="mt-8">
-        <h2 className="mb-4 text-section font-semibold text-ink-900">Détail des réponses</h2>
+        <h2 className="mb-4 text-section font-semibold text-ink-900">{result.details_shown ? "Détail des réponses" : "Vos réponses"}</h2>
         <AttemptQuestions result={result} />
       </section>
     </div>
