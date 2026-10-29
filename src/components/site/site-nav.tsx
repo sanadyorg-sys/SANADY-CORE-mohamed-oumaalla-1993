@@ -25,15 +25,17 @@ export function SiteNavLinks() {
   const pathname = usePathname();
   return (
     <nav aria-label="Navigation principale" className="hidden lg:block">
-      <ul className="flex items-center gap-1">
+      <ul className="flex items-center gap-0.5 xl:gap-1">
         {SITE_LINKS.map((l) => (
           <li key={l.href}>
             <Link
               href={l.href}
               aria-current={isActive(pathname, l.href) ? "page" : undefined}
               className={cn(
-                "whitespace-nowrap rounded-md px-2.5 py-2 text-body font-medium text-ink-700 transition-colors hover:bg-ink-100 hover:text-ink-900 xl:px-3",
-                isActive(pathname, l.href) && "text-accent-700",
+                // Orange underline: grows in on hover, stays under the current section.
+                "relative whitespace-nowrap rounded-md px-2.5 py-2 text-body font-medium text-ink-700 transition-colors hover:text-ink-900 xl:px-3",
+                "after:absolute after:inset-x-2.5 after:-bottom-0.5 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-accent-500 after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 xl:after:inset-x-3",
+                isActive(pathname, l.href) && "font-semibold text-ink-900 after:scale-x-100",
               )}
             >
               {l.short ? (
@@ -41,7 +43,7 @@ export function SiteNavLinks() {
                   <span className="xl:hidden" aria-hidden>
                     {l.short}
                   </span>
-                  <span className="sr-only xl:not-sr-only">{l.label}</span>
+                  <span className="sr-only xl:not-sr-only xl:whitespace-nowrap">{l.label}</span>
                 </>
               ) : (
                 l.label

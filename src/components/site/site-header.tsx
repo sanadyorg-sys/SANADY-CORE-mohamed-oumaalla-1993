@@ -1,50 +1,39 @@
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ArrowRight, LayoutDashboard, LogIn } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { buttonClasses } from "@/components/ui/button";
 import { ScrollHeader } from "./scroll-header";
 import { SiteMobileMenu, SiteNavLinks } from "./site-nav";
+import { SiteSearch } from "./site-search";
 
 export function SiteHeader({ signedIn }: { signedIn: boolean }) {
   return (
     <ScrollHeader>
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:h-[4.5rem] lg:gap-6 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:h-[4.5rem] lg:gap-4 lg:px-8 xl:gap-6">
         <Link href="/" className="shrink-0 rounded-sm" aria-label="SANADY — accueil">
           <BrandLogo className="h-9 lg:h-10" priority />
         </Link>
         <SiteNavLinks />
-        <form action="/formations" role="search" className="ml-auto hidden max-w-xs flex-1 md:block lg:hidden 2xl:block">
-          <label className="relative block">
-            <span className="sr-only">Rechercher une formation</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-400" aria-hidden />
-            <input
-              type="search"
-              name="q"
-              placeholder="Rechercher une formation"
-              className="h-10 w-full rounded-full border border-line-strong bg-ink-25/80 pl-9 pr-4 text-body text-ink-900 placeholder:text-ink-500 transition-colors focus:border-accent-600 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-500/25"
-            />
-          </label>
-        </form>
-        {/* Between lg and 2xl the five links leave no room for a readable field: show a search icon instead. */}
-        <Link
-          href="/formations#recherche"
-          aria-label="Rechercher une formation"
-          className={buttonClasses({ variant: "ghost", size: "icon", className: "ml-auto hidden rounded-full lg:inline-flex 2xl:hidden" })}
-        >
-          <Search aria-hidden />
-        </Link>
-        <div className="ml-auto flex items-center gap-2 md:ml-0">
+        <div className="ml-auto flex items-center gap-2">
+          <SiteSearch className="max-md:hidden" />
           {signedIn ? (
-            <Link href="/mon-espace" className={buttonClasses({ variant: "accent", className: "max-sm:hidden" })}>
-              Mon espace
+            <Link href="/mon-espace" className={buttonClasses({ variant: "accent", className: "group max-sm:hidden" })}>
+              <LayoutDashboard aria-hidden /> Mon espace
             </Link>
           ) : (
             <>
-              <Link href="/connexion" className={buttonClasses({ variant: "ghost", className: "max-sm:hidden" })}>
-                Se connecter
+              {/* Icon only between 1024 and 1279 px, where the six links take the room. */}
+              <Link
+                href="/connexion"
+                aria-label="Se connecter"
+                className={buttonClasses({ variant: "ghost", className: "max-sm:hidden lg:max-xl:size-9 lg:max-xl:px-0" })}
+              >
+                <LogIn aria-hidden />
+                <span className="lg:max-xl:sr-only">Se connecter</span>
               </Link>
-              <Link href="/demande-acces" className={buttonClasses({ variant: "accent", className: "max-sm:hidden" })}>
+              <Link href="/demande-acces" className={buttonClasses({ variant: "accent", className: "group max-sm:hidden" })}>
                 Demander un accès
+                <ArrowRight className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
               </Link>
             </>
           )}
