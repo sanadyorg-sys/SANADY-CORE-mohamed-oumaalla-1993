@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { Building2, Check, ChevronsUpDown, GraduationCap, LogOut, Menu as MenuIcon, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Building2, Check, ChevronsUpDown, GraduationCap, LifeBuoy, LogOut, Menu as MenuIcon, ShieldCheck, UserRound } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Drawer, Menu, MenuItem, MenuLabel, MenuSeparator } from "@/components/ui/overlay";
@@ -79,6 +79,24 @@ export function AppShell({
       <div className="flex-1 overflow-y-auto px-3 pb-6">
         <SidebarNav area={area} institutionId={institutionId} role={navRole} enterprise={enterprise} approver={approver} onNavigate={onNavigate} />
       </div>
+      {area === "teacher" ? (
+        <div className="px-3 pb-3">
+          <Link
+            href="/aide"
+            onClick={onNavigate}
+            className="group relative isolate block overflow-hidden rounded-xl bg-brand-800 p-4 text-white transition-colors hover:bg-brand-900"
+          >
+            <div aria-hidden className="bg-zellige-rosette absolute inset-0 -z-10 opacity-[0.12]" />
+            <span className="flex items-center gap-2 text-label font-semibold">
+              <LifeBuoy className="size-4 text-accent-400" aria-hidden /> Besoin d’aide ?
+            </span>
+            <span className="mt-1 block text-caption leading-snug text-white/70">Questions fréquentes et contact de la Fondation.</span>
+            <span className="mt-2 inline-flex items-center gap-1 text-caption font-semibold text-accent-300">
+              Ouvrir l’aide <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </span>
+          </Link>
+        </div>
+      ) : null}
       <div className="border-t border-line px-5 py-3 text-caption text-ink-500">
         <Link href="/confidentialite" className="hover:text-ink-800 hover:underline" onClick={onNavigate}>
           Confidentialité et données

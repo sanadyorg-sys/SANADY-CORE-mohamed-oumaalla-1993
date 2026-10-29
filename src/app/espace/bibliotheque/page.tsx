@@ -4,7 +4,8 @@ import { Library } from "lucide-react";
 import { LibraryCard } from "@/components/library/library-card";
 import { EmptyState } from "@/components/ui/feedback";
 import { FilterSelect, SearchForm } from "@/components/ui/search-form";
-import { Card, PageHeader } from "@/components/ui/surface";
+import { SpaceHeader } from "@/components/learning/space-header";
+import { Card } from "@/components/ui/surface";
 import { Pagination, withParams } from "@/components/ui/table";
 import { LIBRARY_KINDS, SCHOOL_LEVELS } from "@/lib/labels";
 import { requireViewer } from "@/server/auth";
@@ -29,7 +30,8 @@ export default async function LibraryPage(props: PageProps<"/espace/bibliotheque
 
   return (
     <>
-      <PageHeader
+      <SpaceHeader
+        icon={Library}
         title="Bibliothèque pédagogique"
         description="Guides, supports de formation, fiches d’activité et documents de référence pour préparer et enrichir vos séances."
       />

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, ListChecks, Trophy } from "lucide-react";
+import { SpaceHeader } from "@/components/learning/space-header";
 import { buttonClasses } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/feedback";
-import { Badge, Card, PageHeader } from "@/components/ui/surface";
+import { EmptyState, ProgressBar } from "@/components/ui/feedback";
+import { Badge, Card } from "@/components/ui/surface";
 import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/table";
 import { formatDateTime, formatScore } from "@/lib/format";
 import { requireViewer } from "@/server/auth";
@@ -14,12 +15,25 @@ export const metadata: Metadata = { title: "Mes évaluations" };
 export default async function MyAssessmentsPage() {
   const viewer = await requireViewer();
   const attempts = await getAttempts(viewer.id);
+  const counted = attempts.filter((a) => a.status === "submitted" && !a.voided_at);
+  const modulesPassed = new Set(counted.filter((a) => a.passed).map((a) => a.quiz_id)).size;
+  const best = counted.reduce<number | null>((m, a) => (a.score_percent == null ? m : Math.max(m ?? 0, Number(a.score_percent))), null);
 
   return (
     <>
-      <PageHeader
+      <SpaceHeader
+        icon={ClipboardCheck}
         title="Mes évaluations"
         description="Historique de vos tentatives. Chaque évaluation de module se valide avec un score d’au moins 70 %, en trois tentatives maximum."
+        stats={
+          attempts.length
+            ? [
+                { icon: ClipboardCheck, label: "Modules validés", value: modulesPassed },
+                { icon: Trophy, label: "Meilleur score", value: best == null ? "—" : formatScore(best) },
+                { icon: ListChecks, label: "Tentatives", value: attempts.length },
+              ]
+            : undefined
+        }
       />
       <Card>
         {attempts.length === 0 ? (
@@ -79,9 +93,8 @@ export default async function MyAssessmentsPage() {
                 const base = `/espace/formations/${a.course_id}/evaluations/${a.quiz_id}`;
                 return (
                   <TR key={a.id}>
-                    <TD>
+                    <TD className="min-w-56">
                       <p className="font-medium text-ink-900">{a.quiz?.module?.title ?? a.quiz?.title}</p>
-                      <p className="text-caption text-ink-500">{a.quiz?.title}</p>
                     </TD>
                     <TD className="max-w-[260px] truncate">{a.course?.title}</TD>
                     <TD>
@@ -89,7 +102,22 @@ export default async function MyAssessmentsPage() {
                       {a.voided_at ? <span className="block text-caption text-ink-500">Réinitialisée</span> : null}
                     </TD>
                     <TD className="whitespace-nowrap">{formatDateTime(a.submitted_at ?? a.started_at)}</TD>
-                    <TD align="right">{a.status === "submitted" ? formatScore(a.score_percent) : "—"}</TD>
+                    <TD align="right">
+                      {a.status === "submitted" ? (
+                        <span className="inline-flex items-center justify-end gap-2.5">
+                          <ProgressBar
+                            value={Number(a.score_percent ?? 0) / 100}
+                            label="Score"
+                            size="sm"
+                            tone={a.passed ? "success" : "accent"}
+                            className="w-16"
+                          />
+                          <span className="tabular w-12 font-medium text-ink-900">{formatScore(a.score_percent)}</span>
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TD>
                     <TD>
                       {a.status === "in_progress" ? (
                         <Badge tone="accent">En cours</Badge>

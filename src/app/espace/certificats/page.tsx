@@ -1,34 +1,99 @@
 import type { Metadata } from "next";
-import { Award, CheckCircle2, Download, ExternalLink, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Award, CheckCircle2, Download, ExternalLink, Lock, QrCode, Sparkles } from "lucide-react";
+import { PercentRing } from "@/components/learning/course-card";
+import { SpaceHeader } from "@/components/learning/space-header";
 import { buttonClasses } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState } from "@/components/ui/feedback";
-import { Badge, Card, PageHeader } from "@/components/ui/surface";
+import { Badge, Card } from "@/components/ui/surface";
 import { publicEnv } from "@/lib/env";
 import { formatDate, formatDuration } from "@/lib/format";
 import { requireViewer } from "@/server/auth";
-import { getCertificates } from "@/server/queries/learning";
+import { getCertificates, getLearnerCourses } from "@/server/queries/learning";
 
 export const metadata: Metadata = { title: "Mes certificats" };
 
 export default async function CertificatesPage() {
   const viewer = await requireViewer();
-  const certificates = await getCertificates(viewer.id);
+  const [certificates, courses] = await Promise.all([getCertificates(viewer.id), getLearnerCourses()]);
+  const valid = certificates.filter((c) => !c.revoked_at);
+  // Courses still on their way to a certificate, closest first.
+  const onTheWay = courses
+    .filter((c) => c.has_access && c.enrollment_status === "active")
+    .map((c) => {
+      const parts = c.mandatory_lessons + c.quizzes_total;
+      return { course: c, ratio: parts ? (c.completed_lessons + c.quizzes_passed) / parts : 0 };
+    })
+    .sort((a, b) => b.ratio - a.ratio);
 
   return (
     <>
-      <PageHeader
+      <SpaceHeader
+        icon={Award}
         title="Mes certificats et attestations"
         description="Chaque certificat atteste votre réussite et comporte un code QR cryptographique et un identifiant unique vérifiables par les académies et établissements."
+        stats={[
+          { icon: Award, label: "Certificats obtenus", value: valid.length },
+          { icon: Lock, label: "En préparation", value: onTheWay.length },
+        ]}
       />
       {certificates.length === 0 ? (
-        <Card>
-          <EmptyState
-            icon={Award}
-            title="Aucun certificat pour le moment"
-            description="Un certificat est délivré automatiquement dès que toutes les leçons obligatoires d’une formation sont achevées et que l'ensemble des quiz sont validés avec succès (score minimal de 70 %)."
-          />
-        </Card>
+        onTheWay.length ? (
+          <Card className="overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="p-6 sm:p-8">
+                <h2 className="text-section font-semibold text-ink-900">En route vers votre premier certificat</h2>
+                <p className="mt-1 max-w-xl text-body text-ink-600">
+                  Il est délivré automatiquement dès que toutes les leçons obligatoires d’une formation sont terminées et toutes ses évaluations
+                  réussies (70 % minimum).
+                </p>
+                <ul className="mt-6 space-y-3">
+                  {onTheWay.map(({ course: c, ratio }) => (
+                    <li key={c.course_id}>
+                      <Link
+                        href={`/espace/formations/${c.course_id}`}
+                        className="group flex items-center gap-4 rounded-xl border border-line bg-surface p-4 transition-[border-color,box-shadow] hover:border-line-strong hover:shadow-sm"
+                      >
+                        <PercentRing value={ratio} size={52} stroke={5} label={`Progression vers le certificat : ${c.title}`} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-body font-semibold text-ink-900">{c.title}</span>
+                          <span className="block text-caption text-ink-500">
+                            {c.completed_lessons}/{c.mandatory_lessons} leçons · {c.quizzes_passed}/{c.quizzes_total} évaluations réussies
+                          </span>
+                        </span>
+                        <ArrowRight className="size-4 shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5 group-hover:text-accent-700" aria-hidden />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {/* What the certificate will look like. */}
+              <div aria-hidden className="relative hidden items-center justify-center overflow-hidden bg-ink-25 p-8 lg:flex">
+                <div className="bg-zellige-rosette-accent absolute inset-0 opacity-[0.12]" />
+                <div className="relative w-full max-w-60 rotate-[-2deg] rounded-lg bg-surface p-5 text-center shadow-pop ring-1 ring-line">
+                  <div className="mx-auto h-1.5 w-full rounded-full bg-gradient-to-r from-accent-500 via-amber-500 to-accent-600" />
+                  <Award className="mx-auto mt-4 size-8 text-accent-600" />
+                  <p className="mt-2 text-caption font-semibold uppercase tracking-wider text-ink-500">Certificat</p>
+                  <div className="mx-auto mt-3 h-2 w-3/4 rounded-full bg-ink-100" />
+                  <div className="mx-auto mt-2 h-2 w-1/2 rounded-full bg-ink-100" />
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-[0.625rem] text-ink-400">Fondation Sanady</span>
+                    <QrCode className="size-6 text-ink-300" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <EmptyState
+              icon={Award}
+              title="Aucun certificat pour le moment"
+              description="Un certificat est délivré automatiquement dès que toutes les leçons obligatoires d’une formation sont achevées et que l'ensemble des quiz sont validés avec succès (score minimal de 70 %)."
+            />
+          </Card>
+        )
       ) : (
         <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {certificates.map((c) => {

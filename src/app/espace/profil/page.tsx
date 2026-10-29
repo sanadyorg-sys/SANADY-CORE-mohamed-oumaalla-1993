@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, ShieldCheck } from "lucide-react";
+import { Building2, ShieldCheck, UserRound } from "lucide-react";
 import { MfaCard } from "@/components/profile/mfa-card";
 import { ActionButton } from "@/components/common/action-button";
 import { LeaveInstitutionButton, PasswordForm, ProfileForm } from "@/components/profile/profile-forms";
 import { buttonClasses } from "@/components/ui/button";
-import { Badge, Card, CardBody, CardHeader, PageHeader } from "@/components/ui/surface";
+import { SpaceHeader } from "@/components/learning/space-header";
+import { Badge, Card, CardBody, CardHeader } from "@/components/ui/surface";
 import { formatDate } from "@/lib/format";
 import { MEMBERSHIP_ROLES } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
@@ -33,7 +34,7 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <PageHeader title="Mon profil" description="Vos informations personnelles, votre sécurité et vos établissements." />
+      <SpaceHeader icon={UserRound} title="Mon profil" description="Vos informations personnelles, votre sécurité et vos établissements." />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-6">
           <Card>

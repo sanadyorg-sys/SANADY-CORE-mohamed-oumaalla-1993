@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Award, BookOpen, Clock, Search, X } from "lucide-react";
 import { LearnerCourseCard, ResumeCourseCard } from "@/components/learning/course-card";
+import { SpaceHeader } from "@/components/learning/space-header";
 import { EmptyState } from "@/components/ui/feedback";
 import { Card } from "@/components/ui/surface";
 import { cn } from "@/lib/cn";
@@ -52,20 +53,16 @@ export default async function MyCoursesPage(props: PageProps<"/espace/formations
 
   return (
     <>
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-6">
-        <div className="max-w-2xl">
-          <p className="text-label font-semibold uppercase tracking-wider text-accent-700">Espace enseignant</p>
-          <h1 className="mt-1 text-display font-semibold text-ink-900">Mes formations</h1>
-          <p className="mt-2 text-reading text-ink-600">
-            Les formations qui vous ont été attribuées par SANADY ou votre établissement, à suivre à votre rythme.
-          </p>
-        </div>
-        <dl className="grid w-full grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface shadow-xs sm:w-auto">
-          <Summary icon={BookOpen} label="En cours" value={inProgress.length} />
-          <Summary icon={Award} label="Terminées" value={completed.length} />
-          <Summary icon={Clock} label="De formation" value={formatDuration(totalMinutes)} />
-        </dl>
-      </header>
+      <SpaceHeader
+        icon={BookOpen}
+        title="Mes formations"
+        description="Les formations qui vous ont été attribuées par SANADY ou votre établissement, à suivre à votre rythme."
+        stats={[
+          { icon: BookOpen, label: "En cours", value: inProgress.length },
+          { icon: Award, label: "Terminées", value: completed.length },
+          { icon: Clock, label: "De formation", value: formatDuration(totalMinutes) },
+        ]}
+      />
 
       {resume && key !== "terminees" && !q ? (
         <section aria-label="Reprendre" className="mb-10">
@@ -146,16 +143,5 @@ export default async function MyCoursesPage(props: PageProps<"/espace/formations
         </Card>
       )}
     </>
-  );
-}
-
-function Summary({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: React.ReactNode }) {
-  return (
-    <div className="px-5 py-3">
-      <dt className="flex items-center gap-1.5 text-caption text-ink-500">
-        <Icon className="size-3.5 text-accent-600" aria-hidden /> {label}
-      </dt>
-      <dd className="tabular mt-0.5 text-section font-semibold text-ink-900">{value}</dd>
-    </div>
   );
 }
