@@ -131,7 +131,7 @@ export function PlatformShowcase() {
     <section className="relative isolate overflow-hidden py-16 sm:py-24">
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,var(--color-surface)_0%,var(--color-accent-50)_55%,var(--color-surface)_100%)]" />
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:px-8">
-        <Reveal>
+        <Reveal from="left">
           <p className="inline-flex items-center gap-2 text-label font-bold uppercase tracking-wider text-accent-700">
             <BrandDots /> Votre espace enseignant
           </p>
@@ -159,7 +159,7 @@ export function PlatformShowcase() {
           </Link>
         </Reveal>
 
-        <Reveal delay={120} className="relative">
+        <Reveal from="right" delay={120} className="relative">
           <div aria-hidden className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-br from-accent-200/60 via-accent-100/40 to-transparent blur-2xl" />
           <InView threshold={0.3} className="lg:rotate-[1.2deg] lg:transition-transform lg:duration-700 lg:hover:rotate-0">
             <DashboardMock />
@@ -179,7 +179,7 @@ export function PlatformShowcase() {
 
       {/* Commitments, in one slim row (formerly « Pourquoi SANADY »). */}
       <div className="mx-auto mt-16 max-w-7xl px-4 sm:px-6 lg:px-8">
-        <Reveal as="ul" className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
+        <Reveal as="ul" from="stagger" className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
           {COMMITMENTS.map((c) => (
             <li key={c.title} className="flex items-start gap-3 bg-surface p-5">
               <c.icon className="mt-0.5 size-5 shrink-0 text-accent-600" aria-hidden />

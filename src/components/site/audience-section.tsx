@@ -144,7 +144,7 @@ export function AudienceSection() {
           tabIndex={0}
           className="relative isolate overflow-hidden rounded-[2rem] rounded-tl-md border border-line bg-ink-25 p-7 sm:p-10"
         >
-          <div aria-hidden className="bg-zellige absolute inset-y-0 right-0 -z-10 w-1/2 opacity-70 [mask-image:linear-gradient(to_left,black,transparent)]" />
+          <div aria-hidden className="bg-zellige-rosette-accent absolute inset-y-0 right-0 -z-10 w-1/2 opacity-[0.16] [mask-image:linear-gradient(to_left,black,transparent)]" />
           <div aria-hidden className="absolute -bottom-20 -right-20 -z-10 size-72 rounded-full bg-accent-500/10 blur-3xl" />
           <div key={current.key} className="audience-panel max-w-2xl">
             <span className="flex size-14 items-center justify-center rounded-2xl bg-accent-500 text-white shadow-lg">

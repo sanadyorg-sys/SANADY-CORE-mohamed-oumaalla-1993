@@ -31,7 +31,7 @@ export function SiteFooter({ supportEmail }: { supportEmail?: string | null }) {
     <footer className="relative bg-brand-900 text-brand-100">
       {/* Top subtle Moroccan accent border */}
       <div aria-hidden className="h-1 w-full bg-gradient-to-r from-accent-600 via-accent-400 to-accent-600" />
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-dots-light opacity-10" />
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-zellige-rosette opacity-[0.13]" />
 
       <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
         <div>

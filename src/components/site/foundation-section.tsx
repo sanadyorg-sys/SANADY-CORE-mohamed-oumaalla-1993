@@ -62,7 +62,7 @@ export function FoundationSection() {
       {/* ─── Mission & vision ───────────────────────────────────────────── */}
       <div className="mx-auto max-w-7xl px-4 pt-16 sm:px-6 lg:px-8 lg:pt-24">
         <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
-          <Reveal>
+          <Reveal from="left">
             <p className="inline-flex items-center gap-2 text-label font-bold uppercase tracking-wider text-accent-700">
               <BrandDots /> La Fondation Sanady
             </p>
@@ -106,7 +106,7 @@ export function FoundationSection() {
         </div>
 
         {/* Field figures */}
-        <Reveal as="dl" className="mt-12 grid gap-4 sm:grid-cols-3">
+        <Reveal as="dl" from="stagger" className="mt-12 grid gap-4 sm:grid-cols-3">
           {FIELD_FIGURES.map((f) => (
             <div key={f.label} className="flex flex-col-reverse rounded-2xl border border-line bg-ink-25 p-5 sm:p-6">
               <dt className="mt-2 text-label leading-snug text-ink-600">{f.label}</dt>

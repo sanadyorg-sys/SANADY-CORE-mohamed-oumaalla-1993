@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 export function Reveal({
   as: Tag = "div",
   delay = 0,
+  from = "up",
   className,
   children,
   ...rest
@@ -21,11 +22,16 @@ export function Reveal({
   as?: ElementType;
   /** Stagger delay in milliseconds. */
   delay?: number;
+  /**
+   * Entrance: "up" (default), "left"/"right" (sideways on large screens only),
+   * "zoom", or "stagger" (the children cascade in one after another).
+   */
+  from?: "up" | "left" | "right" | "zoom" | "stagger";
   className?: string;
   children: ReactNode;
 } & Record<string, unknown>) {
   const ref = useRef<HTMLElement>(null);
-  const [state, setState] = useState<"shown" | "pending">("shown");
+  const [state, setState] = useState<"shown" | "pending" | "entered">("shown");
 
   useEffect(() => {
     const el = ref.current;
@@ -42,7 +48,8 @@ export function Reveal({
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          setState("shown");
+          // "entered" = revealed on scroll (it plays the stagger cascade).
+          setState("entered");
           io.disconnect();
         }
       },
@@ -56,6 +63,7 @@ export function Reveal({
     <Tag
       ref={ref}
       data-reveal={state}
+      data-reveal-from={from === "up" ? undefined : from}
       className={cn(className)}
       style={delay ? ({ "--reveal-delay": `${delay}ms` } as React.CSSProperties) : undefined}
       {...rest}

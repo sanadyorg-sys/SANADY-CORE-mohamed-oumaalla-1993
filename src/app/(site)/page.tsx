@@ -116,7 +116,7 @@ export default async function HomePage() {
         </Reveal>
 
         {catalog.categories.length ? (
-          <Reveal className="mt-8 flex flex-wrap gap-2.5">
+          <Reveal from="stagger" className="mt-8 flex flex-wrap gap-2.5">
             {catalog.categories.map((c, i) => {
               const Icon = CATEGORY_ICONS[i % CATEGORY_ICONS.length]!;
               return (
@@ -239,7 +239,7 @@ export default async function HomePage() {
 
       {/* ─── Call to action ───────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8 lg:pb-24">
-        <Reveal className="relative isolate overflow-hidden rounded-[2rem] bg-brand-900 text-white shadow-2xl">
+        <Reveal from="zoom" className="group/cta relative isolate overflow-hidden rounded-[2rem] bg-brand-900 text-white shadow-2xl">
           <div aria-hidden className="absolute inset-0 -z-10 bg-dots-light opacity-60" />
           <div aria-hidden className="absolute -left-24 -top-24 -z-10 size-96 rounded-full bg-accent-500/30 blur-3xl" />
           <div className="grid items-stretch lg:grid-cols-[1.15fr_1fr]">
@@ -278,8 +278,8 @@ export default async function HomePage() {
                 )}
               </div>
             </div>
-            <div className="relative min-h-72 lg:min-h-full">
-              <Image src={ctaPhoto} alt="Des enseignants découvrent des ressources pédagogiques dans une bibliothèque scolaire" fill sizes="(min-width: 1024px) 560px, 100vw" className="object-cover" />
+            <div className="relative min-h-72 overflow-hidden lg:min-h-full">
+              <Image src={ctaPhoto} alt="Des enseignants découvrent des ressources pédagogiques dans une bibliothèque scolaire" fill sizes="(min-width: 1024px) 560px, 100vw" className="object-cover transition-transform duration-700 ease-[var(--ease-out-strong)] group-hover/cta:scale-105" />
               <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-brand-900 via-brand-900/20 to-transparent lg:bg-gradient-to-r" />
             </div>
           </div>
