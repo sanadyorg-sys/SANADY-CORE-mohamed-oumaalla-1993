@@ -98,7 +98,8 @@ export function PercentRing({
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - pct)}
-          className={cn("transition-[stroke-dashoffset] duration-700", tone === "success" ? "stroke-success-600" : "stroke-accent-500")}
+          style={{ "--ring-c": c } as React.CSSProperties}
+          className={cn("ring-fill transition-[stroke-dashoffset] duration-700", tone === "success" ? "stroke-success-600" : "stroke-accent-500")}
         />
       </svg>
       <span

@@ -87,7 +87,7 @@ export function PlayerView({
           </Alert>
         ) : null}
 
-        <div className="overflow-hidden rounded-2xl shadow-sm">
+        <div>
           <LessonExperience
             lessonId={lesson.id}
             media={data.media}
@@ -96,6 +96,7 @@ export function PlayerView({
             pagesViewed={state.pages_viewed}
             completionThreshold={data.threshold}
             preview={preview}
+            next={data.next}
           />
         </div>
 

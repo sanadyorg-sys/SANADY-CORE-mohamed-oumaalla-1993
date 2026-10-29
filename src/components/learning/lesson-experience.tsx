@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/surface";
 import { Skeleton } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast";
 import type { ProgressUpdate } from "@/lib/types";
+import type { NavTarget } from "@/server/queries/player";
 import { VideoPlayer } from "./video-player";
 
 const PdfReader = dynamic(() => import("./pdf-reader"), {
@@ -34,6 +35,7 @@ export function LessonExperience({
   pagesViewed,
   completionThreshold,
   preview = false,
+  next = null,
 }: {
   lessonId: string;
   media: LessonMedia;
@@ -42,6 +44,8 @@ export function LessonExperience({
   pagesViewed: number[];
   completionThreshold: number;
   preview?: boolean;
+  /** Next lesson or evaluation, offered when a video ends. */
+  next?: NavTarget | null;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -97,6 +101,7 @@ export function LessonExperience({
         completionThreshold={completionThreshold}
         onProgress={preview ? undefined : onProgress}
         trackProgress={!preview}
+        next={next}
       />
     );
   }

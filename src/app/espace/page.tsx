@@ -20,6 +20,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { EmptyState, ProgressBar } from "@/components/ui/feedback";
 import { Badge, Card, CardBody, CardHeader, SectionHeading } from "@/components/ui/surface";
 import { cn } from "@/lib/cn";
+import { Reveal } from "@/components/ui/motion";
 import { formatDate, formatRelative, formatScore } from "@/lib/format";
 import { LIBRARY_KINDS } from "@/lib/labels";
 import { todayInMorocco } from "@/lib/period";
@@ -74,7 +75,7 @@ export default async function TeacherDashboardPage() {
   const [courses, steps, activity, certificates, attempts] = await Promise.all([
     getLearnerCourses(),
     getNextSteps(),
-    getRecentActivity(viewer.id, { limit: 6 }),
+    getRecentActivity(viewer.id, { limit: 10 }),
     getCertificates(viewer.id),
     getAttempts(viewer.id),
   ]);
@@ -98,49 +99,50 @@ export default async function TeacherDashboardPage() {
   return (
     <>
       {/* ─── Welcome banner ──────────────────────────────────────────────── */}
-      <section className="relative isolate mb-8 overflow-hidden rounded-2xl bg-brand-800 text-white shadow-pop">
+      <section className="animate-fade-up relative isolate mb-8 overflow-hidden rounded-2xl bg-brand-800 text-white shadow-pop">
         <div aria-hidden className="bg-dots-light absolute inset-0 -z-10" />
         <div aria-hidden className="absolute -right-24 -top-24 -z-10 size-80 rounded-full bg-accent-500/25 blur-3xl" />
         <div aria-hidden className="absolute -bottom-32 left-1/3 -z-10 size-72 rounded-full bg-accent-600/10 blur-3xl" />
 
-        <div className="flex flex-col gap-8 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between lg:p-10">
-          <div className="min-w-0 max-w-xl">
-            <p className="text-label text-white/60">{formatDate(new Date())}</p>
-            <h1 className="mt-2 text-[2rem] font-semibold leading-tight tracking-tight">
-              {greeting()}, {viewer.profile.first_name || "et bienvenue"}
-            </h1>
-            <p className="mt-2 text-reading text-white/75">
-              {active.length
-                ? `Vous avez ${active.length} formation${active.length > 1 ? "s" : ""} en cours. Chaque leçon compte : continuez à votre rythme.`
-                : "Bienvenue dans votre espace de formation SANADY."}
-            </p>
-            {next ? (
-              <Link href={stepHref(next)} className={buttonClasses({ variant: "brand", size: "lg", className: "btn-sheen mt-6 font-semibold" })}>
-                {next.step_kind === "lesson" ? "Continuer mon apprentissage" : next.step_kind === "quiz" ? "Passer l’évaluation" : "Revoir la formation"} <ArrowRight aria-hidden />
-              </Link>
-            ) : null}
-          </div>
+        <div className="space-y-8 p-6 sm:p-8 lg:p-10">
+          <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0 max-w-xl flex-1">
+              <p className="text-label text-white/60">{formatDate(new Date())}</p>
+              <h1 className="mt-2 text-[2rem] font-semibold leading-tight tracking-tight">
+                {greeting()}, {viewer.profile.first_name || "et bienvenue"}
+              </h1>
+              <p className="mt-2 text-reading text-white/75">
+                {active.length
+                  ? `Vous avez ${active.length} formation${active.length > 1 ? "s" : ""} en cours. Chaque leçon compte : continuez à votre rythme.`
+                  : "Bienvenue dans votre espace de formation SANADY."}
+              </p>
+              {/* A blocked step has its own card below (« Revoir la formation »): no second button here. */}
+              {next && next.step_kind !== "blocked" ? (
+                <Link href={stepHref(next)} className={buttonClasses({ variant: "brand", size: "lg", className: "btn-sheen mt-6 font-semibold" })}>
+                  {next.step_kind === "lesson" ? "Continuer mon apprentissage" : "Passer l’évaluation"} <ArrowRight aria-hidden />
+                </Link>
+              ) : null}
+            </div>
 
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-            {lessonsTotal > 0 ? (
-              <div className="flex items-center gap-4">
-                <PercentRing value={lessonsDone / lessonsTotal} size={104} stroke={9} invert label="Progression globale des leçons obligatoires" />
-                <div>
-                  <p className="text-caption uppercase tracking-wider text-white/60">Progression globale</p>
-                  <p className="tabular text-section font-semibold">
-                    {lessonsDone}/{lessonsTotal} leçons
-                  </p>
-                  <p className="text-caption text-white/60">obligatoires terminées</p>
+              {lessonsTotal > 0 ? (
+                <div className="flex items-center gap-4">
+                  <PercentRing value={lessonsDone / lessonsTotal} size={104} stroke={9} invert label="Progression globale des leçons obligatoires" />
+                  <div>
+                    <p className="text-caption uppercase tracking-wider text-white/60">Progression globale</p>
+                    <p className="tabular text-section font-semibold">
+                      {lessonsDone}/{lessonsTotal} leçons
+                    </p>
+                    <p className="text-caption text-white/60">obligatoires terminées</p>
+                  </div>
                 </div>
-              </div>
-            ) : null}
-            <dl className="grid grid-cols-2 gap-3 sm:w-64">
-              <HeroStat icon={BookOpen} label="En cours" value={active.length} />
-              <HeroStat icon={CircleCheck} label="Terminées" value={completed.length} />
-              <HeroStat icon={ClipboardCheck} label="Évaluations" value={quizzesPassed} />
-              <HeroStat icon={Award} label="Certificats" value={validCertificates.length} />
-            </dl>
+              ) : null}
           </div>
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <HeroStat icon={BookOpen} label="En cours" value={active.length} />
+            <HeroStat icon={CircleCheck} label="Terminées" value={completed.length} />
+            <HeroStat icon={ClipboardCheck} label="Évaluations réussies" value={quizzesPassed} />
+            <HeroStat icon={Award} label="Certificats" value={validCertificates.length} />
+          </dl>
         </div>
       </section>
 
@@ -163,13 +165,15 @@ export default async function TeacherDashboardPage() {
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="min-w-0 space-y-10">
-            {next ? (
-              <NextStepCard step={next} course={coursesById.get(next.course_id)} today={today} />
-            ) : active.length === 0 ? null : (
-              <Card>
-                <EmptyState compact icon={CircleCheck} title="Rien d’urgent" description="Vos formations en cours sont à jour." />
+        // Two columns once the content area itself is wide enough (the sidebar takes its share of the window).
+        <div className="@container">
+          <div className="grid grid-cols-1 gap-8 @5xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="min-w-0 space-y-10">
+              {next ? (
+                <NextStepCard step={next} course={coursesById.get(next.course_id)} today={today} />
+              ) : active.length === 0 ? null : (
+                <Card>
+                  <EmptyState compact icon={CircleCheck} title="Rien d’urgent" description="Vos formations en cours sont à jour." />
               </Card>
             )}
 
@@ -184,11 +188,11 @@ export default async function TeacherDashboardPage() {
                 }
               />
               {active.length ? (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <Reveal from="stagger" className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   {activeSorted.slice(0, 4).map((c) => (
                     <LearnerCourseCard key={c.course_id} course={c} />
                   ))}
-                </div>
+                </Reveal>
               ) : (
                 <Card>
                   <EmptyState
@@ -206,7 +210,20 @@ export default async function TeacherDashboardPage() {
               <Card>
                 <CardBody className="py-5">
                   {activity.length ? (
-                    <ActivityList items={activity} />
+                    <>
+                      <ActivityList items={activity.slice(0, 4)} />
+                      {activity.length > 4 ? (
+                        <details className="group/more mt-4">
+                          <summary className="cursor-pointer list-none text-label font-medium text-accent-700 hover:underline [&::-webkit-details-marker]:hidden">
+                            <span className="group-open/more:hidden">Voir plus d’activité ({activity.length - 4})</span>
+                            <span className="hidden group-open/more:inline">Voir moins</span>
+                          </summary>
+                          <div className="mt-4">
+                            <ActivityList items={activity.slice(4)} />
+                          </div>
+                        </details>
+                      ) : null}
+                    </>
                   ) : (
                     <p className="text-body text-ink-500">Votre activité d’apprentissage apparaîtra ici.</p>
                   )}
@@ -215,179 +232,181 @@ export default async function TeacherDashboardPage() {
             </section>
           </div>
 
-          <aside className="space-y-6">
-            {deadlines.length ? (
-              <Card>
-                <CardHeader title="Échéances" description="À ne pas manquer" />
-                <CardBody>
-                  <ul className="space-y-3">
-                    {deadlines.map((s) => {
-                      const days = daysUntil(s.due_on!, today);
-                      const late = days < 0;
-                      const soon = days <= 7;
-                      return (
-                        <li key={s.course_id}>
-                          <Link href={stepHref(s)} className="group flex items-center gap-3">
-                            <span
-                              className={cn(
-                                "flex w-12 shrink-0 flex-col items-center rounded-lg py-1.5 ring-1 ring-inset",
-                                late ? "bg-danger-50 text-danger-700 ring-danger-200" : soon ? "bg-warning-50 text-warning-700 ring-warning-200" : "bg-ink-50 text-ink-700 ring-line",
-                              )}
-                            >
-                              <span className="tabular text-card font-semibold leading-none">{new Date(`${s.due_on}T12:00:00Z`).getUTCDate()}</span>
-                              <span className="mt-0.5 text-[0.625rem] font-medium uppercase">
-                                {new Intl.DateTimeFormat("fr-FR", { month: "short", timeZone: "UTC" }).format(new Date(`${s.due_on}T12:00:00Z`))}
+            {/* Stacked under the main column, the side cards sit two by two. */}
+            <Reveal as="aside" from="stagger" className="grid content-start items-start gap-6 md:grid-cols-2 @5xl:grid-cols-1">
+              {deadlines.length ? (
+                <Card>
+                  <CardHeader title="Échéances" description="À ne pas manquer" />
+                  <CardBody>
+                    <ul className="space-y-3">
+                      {deadlines.map((s) => {
+                        const days = daysUntil(s.due_on!, today);
+                        const late = days < 0;
+                        const soon = days <= 7;
+                        return (
+                          <li key={s.course_id}>
+                            <Link href={stepHref(s)} className="group flex items-center gap-3">
+                              <span
+                                className={cn(
+                                  "flex w-12 shrink-0 flex-col items-center rounded-lg py-1.5 ring-1 ring-inset",
+                                  late ? "bg-danger-50 text-danger-700 ring-danger-200" : soon ? "bg-warning-50 text-warning-700 ring-warning-200" : "bg-ink-50 text-ink-700 ring-line",
+                                )}
+                              >
+                                <span className="tabular text-card font-semibold leading-none">{new Date(`${s.due_on}T12:00:00Z`).getUTCDate()}</span>
+                                <span className="mt-0.5 text-[0.625rem] font-medium uppercase">
+                                  {new Intl.DateTimeFormat("fr-FR", { month: "short", timeZone: "UTC" }).format(new Date(`${s.due_on}T12:00:00Z`))}
+                                </span>
                               </span>
+                              <span className="min-w-0">
+                                <span className="block truncate text-body font-medium text-ink-900 group-hover:underline">{s.course_title}</span>
+                                <span className={cn("block text-caption", late ? "text-danger-600" : soon ? "text-warning-700" : "text-ink-500")}>
+                                  {late ? `En retard de ${-days} jour${-days > 1 ? "s" : ""}` : days === 0 ? "Aujourd’hui" : `Dans ${days} jour${days > 1 ? "s" : ""}`}
+                                </span>
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </CardBody>
+                </Card>
+              ) : null}
+
+              {later.length ? (
+                <Card>
+                  <CardHeader title="Ensuite" description="La prochaine étape de vos autres formations" />
+                  <CardBody>
+                    <ul className="space-y-4">
+                      {later.slice(0, 4).map((s) => (
+                        <li key={s.course_id}>
+                          <Link href={stepHref(s)} className="group flex items-start gap-3">
+                            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-accent-700 ring-1 ring-inset ring-accent-100">
+                              {s.step_kind === "lesson" ? <PlayCircle className="size-4" aria-hidden /> : <ClipboardCheck className="size-4" aria-hidden />}
                             </span>
                             <span className="min-w-0">
-                              <span className="block truncate text-body font-medium text-ink-900 group-hover:underline">{s.course_title}</span>
-                              <span className={cn("block text-caption", late ? "text-danger-600" : soon ? "text-warning-700" : "text-ink-500")}>
-                                {late ? `En retard de ${-days} jour${-days > 1 ? "s" : ""}` : days === 0 ? "Aujourd’hui" : `Dans ${days} jour${days > 1 ? "s" : ""}`}
-                              </span>
+                              <span className="block text-caption font-medium text-ink-500">{s.course_title}</span>
+                              <span className="block text-body font-medium text-ink-900 group-hover:underline">{s.item_title}</span>
                             </span>
                           </Link>
                         </li>
-                      );
-                    })}
-                  </ul>
-                </CardBody>
-              </Card>
-            ) : null}
+                      ))}
+                    </ul>
+                  </CardBody>
+                </Card>
+              ) : null}
 
-            {later.length ? (
-              <Card>
-                <CardHeader title="Ensuite" description="La prochaine étape de vos autres formations" />
-                <CardBody>
-                  <ul className="space-y-4">
-                    {later.slice(0, 4).map((s) => (
-                      <li key={s.course_id}>
-                        <Link href={stepHref(s)} className="group flex items-start gap-3">
-                          <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-accent-700 ring-1 ring-inset ring-accent-100">
-                            {s.step_kind === "lesson" ? <PlayCircle className="size-4" aria-hidden /> : <ClipboardCheck className="size-4" aria-hidden />}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-caption font-medium text-ink-500">{s.course_title}</span>
-                            <span className="block text-body font-medium text-ink-900 group-hover:underline">{s.item_title}</span>
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </CardBody>
-              </Card>
-            ) : null}
-
-            <Card>
-              <CardHeader
-                title="Dernières évaluations"
-                actions={
-                  recentResults.length ? (
-                    <Link href="/espace/evaluations" className="text-label font-medium text-accent-700 hover:underline">
-                      Voir tout
-                    </Link>
-                  ) : null
-                }
-              />
-              <CardBody>
-                {recentResults.length ? (
-                  <ul className="space-y-4">
-                    {recentResults.map((a) => (
-                      <li key={a.id}>
-                        <Link href={`/espace/formations/${a.course_id}/evaluations/${a.quiz_id}/resultats/${a.id}`} className="group block">
-                          <span className="flex items-start justify-between gap-3">
-                            <span className="min-w-0">
-                              <span className="block truncate text-body font-medium text-ink-800 group-hover:underline">{a.quiz?.title}</span>
-                              <span className="block text-caption text-ink-500">
-                                Tentative {a.attempt_number} · {formatRelative(a.submitted_at)}
-                              </span>
-                            </span>
-                            <Badge tone={a.passed ? "success" : "neutral"}>{a.passed ? "Réussie" : "Non validée"}</Badge>
-                          </span>
-                          <span className="mt-2 flex items-center gap-3">
-                            <ProgressBar value={Number(a.score_percent ?? 0) / 100} label="Score" size="sm" tone={a.passed ? "success" : "accent"} className="flex-1" />
-                            <span className="tabular w-14 text-right text-label font-semibold text-ink-900">{formatScore(a.score_percent)}</span>
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-body text-ink-500">Chaque module se termine par une évaluation : 70 % pour la valider, trois tentatives.</p>
-                )}
-              </CardBody>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardHeader
-                title="Mes certificats"
-                actions={
-                  validCertificates.length ? (
-                    <Link href="/espace/certificats" className="text-label font-medium text-accent-700 hover:underline">
-                      Voir tout
-                    </Link>
-                  ) : null
-                }
-              />
-              <CardBody>
-                {validCertificates.length ? (
-                  <ul className="space-y-3">
-                    {validCertificates.slice(0, 3).map((c) => (
-                      <li key={c.id} className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-accent-50 to-transparent p-3 ring-1 ring-inset ring-accent-100">
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white shadow-xs">
-                          <Award className="size-[18px]" aria-hidden />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-body font-semibold text-ink-900">{c.course_title}</p>
-                          <p className="text-caption text-ink-500">Délivré le {formatDate(c.issued_at)}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-body text-ink-500">
-                    Un certificat est délivré automatiquement lorsque toutes les leçons obligatoires sont terminées et toutes les évaluations
-                    réussies.
-                  </p>
-                )}
-              </CardBody>
-            </Card>
-
-            {library.length ? (
               <Card>
                 <CardHeader
-                  title="Bibliothèque pédagogique"
+                  title="Dernières évaluations"
                   actions={
-                    <Link href="/espace/bibliotheque" className="text-label font-medium text-accent-700 hover:underline">
-                      Explorer
-                    </Link>
+                    recentResults.length ? (
+                      <Link href="/espace/evaluations" className="text-label font-medium text-accent-700 hover:underline">
+                        Voir tout
+                      </Link>
+                    ) : null
                   }
                 />
                 <CardBody>
-                  <ul className="space-y-3">
-                    {library.map((r) => {
-                      const Icon = KIND_ICONS[r.kind] ?? BookMarked;
-                      return (
-                        <li key={r.id}>
-                          <Link href={`/espace/bibliotheque/${r.id}`} className="group flex items-start gap-3">
-                            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-ink-50 text-accent-700 ring-1 ring-inset ring-line">
-                              <Icon className="size-4" aria-hidden />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block text-body font-medium text-ink-800 group-hover:underline">{r.title}</span>
-                              <span className="block text-caption text-ink-500">
-                                {LIBRARY_KINDS[r.kind]}
-                                {r.course ? ` · ${r.course.title}` : ""}
+                  {recentResults.length ? (
+                    <ul className="space-y-4">
+                      {recentResults.map((a) => (
+                        <li key={a.id}>
+                          <Link href={`/espace/formations/${a.course_id}/evaluations/${a.quiz_id}/resultats/${a.id}`} className="group block">
+                            <span className="flex items-start justify-between gap-3">
+                              <span className="min-w-0">
+                                <span className="block truncate text-body font-medium text-ink-800 group-hover:underline">{a.quiz?.title}</span>
+                                <span className="block text-caption text-ink-500">
+                                  Tentative {a.attempt_number} · {formatRelative(a.submitted_at)}
+                                </span>
                               </span>
+                              <Badge tone={a.passed ? "success" : "neutral"}>{a.passed ? "Réussie" : "Non validée"}</Badge>
+                            </span>
+                            <span className="mt-2 flex items-center gap-3">
+                              <ProgressBar value={Number(a.score_percent ?? 0) / 100} label="Score" size="sm" tone={a.passed ? "success" : "accent"} className="flex-1" />
+                              <span className="tabular w-14 text-right text-label font-semibold text-ink-900">{formatScore(a.score_percent)}</span>
                             </span>
                           </Link>
                         </li>
-                      );
-                    })}
-                  </ul>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-body text-ink-500">Chaque module se termine par une évaluation : 70 % pour la valider, trois tentatives.</p>
+                  )}
                 </CardBody>
               </Card>
-            ) : null}
-          </aside>
+
+              <Card className="overflow-hidden">
+                <CardHeader
+                  title="Mes certificats"
+                  actions={
+                    validCertificates.length ? (
+                      <Link href="/espace/certificats" className="text-label font-medium text-accent-700 hover:underline">
+                        Voir tout
+                      </Link>
+                    ) : null
+                  }
+                />
+                <CardBody>
+                  {validCertificates.length ? (
+                    <ul className="space-y-3">
+                      {validCertificates.slice(0, 3).map((c) => (
+                        <li key={c.id} className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-accent-50 to-transparent p-3 ring-1 ring-inset ring-accent-100">
+                          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white shadow-xs">
+                            <Award className="size-[18px]" aria-hidden />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-body font-semibold text-ink-900">{c.course_title}</p>
+                            <p className="text-caption text-ink-500">Délivré le {formatDate(c.issued_at)}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-body text-ink-500">
+                      Un certificat est délivré automatiquement lorsque toutes les leçons obligatoires sont terminées et toutes les évaluations
+                      réussies.
+                    </p>
+                  )}
+                </CardBody>
+              </Card>
+
+              {library.length ? (
+                <Card>
+                  <CardHeader
+                    title="Bibliothèque pédagogique"
+                    actions={
+                      <Link href="/espace/bibliotheque" className="text-label font-medium text-accent-700 hover:underline">
+                        Explorer
+                      </Link>
+                    }
+                  />
+                  <CardBody>
+                    <ul className="space-y-3">
+                      {library.map((r) => {
+                        const Icon = KIND_ICONS[r.kind] ?? BookMarked;
+                        return (
+                          <li key={r.id}>
+                            <Link href={`/espace/bibliotheque/${r.id}`} className="group flex items-start gap-3">
+                              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-ink-50 text-accent-700 ring-1 ring-inset ring-line">
+                                <Icon className="size-4" aria-hidden />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block text-body font-medium text-ink-800 group-hover:underline">{r.title}</span>
+                                <span className="block text-caption text-ink-500">
+                                  {LIBRARY_KINDS[r.kind]}
+                                  {r.course ? ` · ${r.course.title}` : ""}
+                                </span>
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </CardBody>
+                </Card>
+              ) : null}
+            </Reveal>
+          </div>
         </div>
       )}
     </>

@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Gauge, Maximize, Minimize, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, ClipboardCheck, Gauge, Maximize, Minimize, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
 import { Menu, MenuItem, MenuLabel } from "@/components/ui/overlay";
 import { cn } from "@/lib/cn";
 import { formatClock } from "@/lib/format";
 import { createClient } from "@/lib/supabase/browser";
 import type { ProgressUpdate } from "@/lib/types";
+import type { NavTarget } from "@/server/queries/player";
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 1.75, 2];
 const FLUSH_INTERVAL_MS = 15_000;
@@ -29,6 +31,7 @@ export function VideoPlayer({
   completionThreshold,
   onProgress,
   trackProgress = true,
+  next = null,
 }: {
   lessonId: string;
   source: { type: "mp4" | "hls"; url: string; poster?: string };
@@ -38,6 +41,8 @@ export function VideoPlayer({
   onProgress?: (update: ProgressUpdate) => void;
   /** False in administrator preview: nothing is recorded. */
   trackProgress?: boolean;
+  /** Where to go once the video has ended (shown on the end card). */
+  next?: NavTarget | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,6 +53,7 @@ export function VideoPlayer({
   const lastSentPosition = useRef<number>(resumePosition);
 
   const [playing, setPlaying] = useState(false);
+  const [ended, setEnded] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [rate, setRate] = useState(1);
@@ -253,7 +259,7 @@ export function VideoPlayer({
         onKeyDown={onKeyDown}
         className={cn(
           "group relative overflow-hidden bg-ink-900 focus-visible:outline-offset-4",
-          fullscreen ? "flex h-full items-center" : "aspect-video rounded-lg",
+          fullscreen ? "flex h-full items-center" : "aspect-video rounded-2xl shadow-sm",
         )}
       >
         <video
@@ -265,13 +271,17 @@ export function VideoPlayer({
           disablePictureInPicture={false}
           onContextMenu={(e) => e.preventDefault()}
           onClick={togglePlay}
-          onPlay={() => setPlaying(true)}
+          onPlay={() => {
+            setPlaying(true);
+            setEnded(false);
+          }}
           onPause={() => {
             setPlaying(false);
             void flush();
           }}
           onEnded={() => {
             setPlaying(false);
+            setEnded(true);
             void flush();
           }}
           onTimeUpdate={onTimeUpdate}
@@ -304,7 +314,39 @@ export function VideoPlayer({
           </div>
         ) : null}
 
-        {!playing && !error ? (
+        {ended && !error ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-brand-900/85 p-6 text-center text-white backdrop-blur-sm">
+            <p className="text-caption font-semibold uppercase tracking-wider text-accent-300">Vidéo terminée</p>
+            {next ? (
+              <Link
+                href={next.href}
+                className="group flex max-w-md items-center gap-3 rounded-xl bg-white px-4 py-3 text-left text-ink-900 shadow-pop transition-transform hover:-translate-y-0.5"
+              >
+                <span className="min-w-0">
+                  <span className="block text-caption text-ink-500">{next.kind === "quiz" ? "Ensuite : l’évaluation" : "Leçon suivante"}</span>
+                  <span className="block truncate text-body font-semibold">{next.label}</span>
+                </span>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white transition-transform group-hover:translate-x-0.5">
+                  {next.kind === "quiz" ? <ClipboardCheck className="size-4" aria-hidden /> : <ArrowRight className="size-4" aria-hidden />}
+                </span>
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                const video = videoRef.current;
+                if (!video) return;
+                video.currentTime = 0;
+                void video.play();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-label font-medium text-white/80 hover:bg-white/10 hover:text-white"
+            >
+              <RotateCcw className="size-4" aria-hidden /> Revoir la vidéo
+            </button>
+          </div>
+        ) : null}
+
+        {!playing && !error && !ended ? (
           <button
             onClick={togglePlay}
             className="absolute left-1/2 top-1/2 flex size-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-brand-800 shadow-pop transition-transform hover:scale-105"

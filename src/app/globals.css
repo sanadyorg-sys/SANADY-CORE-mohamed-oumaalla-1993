@@ -727,6 +727,21 @@
 }
 
 /* Hero slideshow (inspired by sanady.org's slider): slow crossfade with a gentle zoom. */
+/* Progress rings (components/learning/course-card.tsx · PercentRing) fill up from empty when they appear. */
+.ring-fill {
+  animation: ring-fill 1.1s var(--ease-out-strong) both;
+}
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-c);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-fill {
+    animation: none;
+  }
+}
+
 /* Hero background film (components/site/hero-video.tsx): fades in once it plays. */
 .hero-video {
   opacity: 0;
