@@ -749,6 +749,24 @@
 }
 .hero-video[data-playing] {
   opacity: 1;
+  /* Slow « Ken Burns » push-in; frozen with the film when it is paused. */
+  animation: hero-zoom 26s ease-in-out infinite alternate;
+}
+.hero-video[data-paused] {
+  animation-play-state: paused;
+}
+@keyframes hero-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.09) translate3d(-1.5%, -1%, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-video[data-playing] {
+    animation: none;
+  }
 }
 
 .hero-slide {
@@ -810,6 +828,14 @@
   border: 0;
   border-radius: 9999px;
   background: #fff;
+}
+/* Seek bar: the unplayed part is transparent so the watched stretches drawn
+   underneath (video-player.tsx) show through. */
+.video-seek::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, var(--color-accent-500) var(--played, 0%), transparent var(--played, 0%));
+}
+.video-seek::-moz-range-track {
+  background: transparent;
 }
 .video-range:focus-visible {
   outline: 2px solid #fff;

@@ -36,9 +36,13 @@ export function HomeHero({
 }) {
   return (
     <section className="relative isolate overflow-hidden bg-brand-900 text-white">
+      {/* Background film (under the atmosphere veil) and its pause button. */}
+      <HeroVideo
+        className="hero-video absolute inset-0 -z-20 h-full w-full object-cover"
+        controlClassName="absolute right-4 top-4 z-10 sm:right-6 sm:top-6"
+      />
       {/* Atmosphere */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <HeroVideo className="hero-video absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-brand-900/65" />
         <div className="absolute -right-40 -top-40 size-[42rem] rounded-full bg-accent-500/20 blur-3xl animate-blob" />
         <div className="absolute -bottom-48 -left-40 size-[36rem] rounded-full bg-accent-600/15 blur-3xl" />

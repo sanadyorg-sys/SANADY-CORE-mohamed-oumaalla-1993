@@ -9,7 +9,7 @@ import type { VideoProvider } from "@/lib/types";
 export const MEDIA_BUCKET = "course-media";
 
 export type VideoSource =
-  | { type: "mp4"; url: string }
+  | { type: "mp4"; url: string; captions?: string }
   | { type: "hls"; url: string; poster?: string }
   | { type: "unavailable"; reason: "not_configured" | "missing" | "denied" };
 
@@ -69,6 +69,11 @@ export async function videoSource(lesson: {
     });
     return { type: "hls", url: signed.url, poster: signed.poster };
   }
-  const url = await signedMediaUrl(lesson.video_ref, ttl);
-  return url ? { type: "mp4", url } : { type: "unavailable", reason: "denied" };
+  // Subtitles for a stored file: a WebVTT file with the same name next to it
+  // (lecon-01.mp4 → lecon-01.vtt). Absent file = no captions button.
+  const [url, captions] = await Promise.all([
+    signedMediaUrl(lesson.video_ref, ttl),
+    signedMediaUrl(lesson.video_ref.replace(/\.[^/.]+$/, "") + ".vtt", ttl),
+  ]);
+  return url ? { type: "mp4", url, captions: captions ?? undefined } : { type: "unavailable", reason: "denied" };
 }
