@@ -9,11 +9,13 @@
  * scheduled for later, three linked to the demo courses. They contain
  * general teaching advice and explanations of the platform only — no fact
  * about the Foundation, no real event, no testimonial.
- * Covers are generated locally (sharp) in the brand colours. Safe to re-run:
- * articles that already exist (same address) are skipped.
+ * Covers: a photo from public/brand/photos (the site's own photos, cropped to
+ * 16:9), or a cover generated in the brand colours when none is set. Safe to
+ * re-run: existing articles are kept and only get their photo refreshed.
  */
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
+import { readFile } from "node:fs/promises";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ref = url?.match(/^https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
@@ -42,6 +44,7 @@ const DEMO_NOTE = "*Article de démonstration : il sera retiré avant le lanceme
 const ARTICLES = [
   {
     slug: "demo-bienvenue-sur-la-page-actualites",
+    photo: { file: "enseignants-formation.jpg", alt: "Enseignantes et enseignants réunis à l’issue d’une formation" },
     category: "actualites-institutionnelles",
     daysAgo: 10,
     featured: true,
@@ -69,6 +72,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-decouvrir-la-formation-evaluation-formative",
+    photo: { file: "atelier-enseignants.jpg", alt: "Enseignants en atelier de formation dans une salle de classe" },
     category: "formation-des-enseignants",
     daysAgo: 8,
     cover: { bg: "#F95A05", fg: "#FFFFFF", accent: "#1C1917", shape: "checks" },
@@ -93,6 +97,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-webinaire-differencier-son-enseignement",
+    photo: { file: "session-formation.jpg", alt: "Salle de formation : une intervenante présente devant un écran" },
     category: "evenements-et-webinaires",
     daysAgo: 5,
     cover: { bg: "#FFF4ED", fg: "#1C1917", accent: "#C94400", shape: "grid" },
@@ -116,6 +121,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-cinq-idees-pour-demarrer-une-seance",
+    photo: { file: "visite-bibliotheque.jpg", alt: "Visite d’une bibliothèque scolaire garnie de livres" },
     category: "ressources-pedagogiques",
     daysAgo: 12,
     cover: { bg: "#3A3531", fg: "#FFFFFF", accent: "#FD7A38", shape: "checks" },
@@ -140,6 +146,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-le-numerique-trois-usages-simples",
+    photo: { file: "atelier-numerique.jpg", alt: "Enseignants travaillant sur des ordinateurs portables" },
     category: "innovation-pedagogique",
     daysAgo: 15,
     cover: { bg: "#7A2E05", fg: "#FFFFFF", accent: "#FDBA8C", shape: "grid" },
@@ -166,6 +173,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-membres-suivre-sa-progression",
+    photo: { file: "accompagnement-eleve.jpg", alt: "Un enseignant accompagne un élève à son bureau" },
     category: "formation-des-enseignants",
     daysAgo: 3,
     visibility: "members",
@@ -187,6 +195,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-exemple-d-annonce-importante",
+    photo: { file: "forum-intervenants.jpg", alt: "Intervenants assis à une table lors d’une rencontre" },
     category: "annonces-importantes",
     daysAgo: 1,
     cover: { bg: "#F95A05", fg: "#FFFFFF", accent: "#FFF4ED", shape: "circles" },
@@ -203,6 +212,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-article-programme-pour-plus-tard",
+    photo: { file: "classe-primaire.jpg", alt: "Élèves dans une salle de classe de primaire" },
     category: "nouveaux-programmes",
     daysAgo: -3,
     cover: { bg: "#3A3531", fg: "#FFFFFF", accent: "#F95A05", shape: "grid" },
@@ -276,9 +286,31 @@ const storage = createClient(url, serviceKey, { auth: { persistSession: false, a
 const categories = Object.fromEntries((await sql(`select id, slug, name from public.news_categories`)).map((c) => [c.slug, c]));
 const existing = new Set((await sql(`select slug from public.news_articles where slug like 'demo-%'`)).map((r) => r.slug));
 
+/** A distinct file per kind of cover, so a cached old cover is never shown instead. */
+const coverPath = (id, a) => `${id}/${a.photo ? "photo-demo" : "couverture-demo"}.jpg`;
+
+/** Cover of an article: its photo cropped to 16:9, or a generated cover. */
+async function coverFor(a, categoryName) {
+  if (!a.photo) return { image: await render(a.cover, a.title, categoryName), alt: `Visuel de l’article « ${a.title} »` };
+  const image = await sharp(await readFile(new URL(`../../public/brand/photos/${a.photo.file}`, import.meta.url)))
+    .resize(W, H, { fit: "cover", position: "attention" })
+    .jpeg({ quality: 84, mozjpeg: true })
+    .toBuffer();
+  return { image, alt: a.photo.alt };
+}
+
 for (const a of ARTICLES) {
   if (existing.has(a.slug)) {
-    console.log(`• ${a.title}: already there, skipped`);
+    const [row] = await sql(`select id from public.news_articles where slug = ${lit(a.slug)} and author_label = ${lit(DEMO_AUTHOR)}`);
+    if (row && a.photo) {
+      const { image, alt } = await coverFor(a, categories[a.category]?.name ?? "");
+      const path = coverPath(row.id, a);
+      const { error } = await storage.from("news-images").upload(path, image, { contentType: "image/jpeg", upsert: true });
+      if (error) throw new Error(`upload ${path}: ${error.message}`);
+      await sql(`update public.news_articles set cover_path = ${lit(path)}, cover_alt = ${lit(alt)} where id = ${lit(row.id)}`);
+      await storage.from("news-images").remove([`${row.id}/couverture-demo.jpg`]);
+      console.log(`↻ ${a.title}: photo updated`);
+    } else console.log(`• ${a.title}: already there, skipped`);
     continue;
   }
   const category = categories[a.category];
@@ -305,10 +337,11 @@ for (const a of ARTICLES) {
         from public.courses c where c.title in (${a.courses.map(lit).join(",")}) and c.status = 'published'
       on conflict do nothing`);
   }
-  const path = `${row.id}/couverture-demo.jpg`;
-  const { error } = await storage.from("news-images").upload(path, await render(a.cover, a.title, category.name), { contentType: "image/jpeg", upsert: true });
+  const path = coverPath(row.id, a);
+  const { image, alt } = await coverFor(a, category.name);
+  const { error } = await storage.from("news-images").upload(path, image, { contentType: "image/jpeg", upsert: true });
   if (error) throw new Error(`upload ${path}: ${error.message}`);
-  await sql(`update public.news_articles set cover_path = ${lit(path)}, cover_alt = ${lit(`Visuel de l’article « ${a.title} »`)} where id = ${lit(row.id)}`);
+  await sql(`update public.news_articles set cover_path = ${lit(path)}, cover_alt = ${lit(alt)} where id = ${lit(row.id)}`);
   console.log(`✓ ${a.title}${a.visibility === "members" ? " (membres)" : ""}${a.daysAgo < 0 ? " (programmé)" : ""}`);
 }
 console.log("Remove with: npm run demo:remove");
