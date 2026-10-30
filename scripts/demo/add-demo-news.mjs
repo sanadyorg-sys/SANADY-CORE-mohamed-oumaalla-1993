@@ -9,9 +9,10 @@
  * scheduled for later, three linked to the demo courses. They contain
  * general teaching advice and explanations of the platform only — no fact
  * about the Foundation, no real event, no testimonial.
- * Covers: a photo from public/brand/photos (the site's own photos, cropped to
- * 16:9), or a cover generated in the brand colours when none is set. Safe to
- * re-run: existing articles are kept and only get their photo refreshed.
+ * Covers: a Pexels stock photo from news-photos/ (one per article, credits in
+ * news-photos/CREDITS.md — illustrations, never presented as the Foundation),
+ * or a cover generated in the brand colours when none is set. Safe to re-run:
+ * existing articles are kept and only get their photo refreshed.
  */
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
@@ -44,7 +45,7 @@ const DEMO_NOTE = "*Article de démonstration : il sera retiré avant le lanceme
 const ARTICLES = [
   {
     slug: "demo-bienvenue-sur-la-page-actualites",
-    photo: { file: "enseignants-formation.jpg", alt: "Enseignantes et enseignants réunis à l’issue d’une formation" },
+    photo: { file: "bienvenue.jpg", alt: "Un formateur s’adresse à un groupe d’adultes réunis dans une salle de formation" },
     category: "actualites-institutionnelles",
     daysAgo: 10,
     featured: true,
@@ -72,7 +73,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-decouvrir-la-formation-evaluation-formative",
-    photo: { file: "atelier-enseignants.jpg", alt: "Enseignants en atelier de formation dans une salle de classe" },
+    photo: { file: "evaluation-formative.jpg", alt: "Un enseignant écrit au tableau blanc, une feuille à la main" },
     category: "formation-des-enseignants",
     daysAgo: 8,
     cover: { bg: "#F95A05", fg: "#FFFFFF", accent: "#1C1917", shape: "checks" },
@@ -97,7 +98,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-webinaire-differencier-son-enseignement",
-    photo: { file: "session-formation.jpg", alt: "Salle de formation : une intervenante présente devant un écran" },
+    photo: { file: "webinaire.jpg", alt: "Un enseignant échange en visioconférence avec un élève sur un ordinateur portable" },
     category: "evenements-et-webinaires",
     daysAgo: 5,
     cover: { bg: "#FFF4ED", fg: "#1C1917", accent: "#C94400", shape: "grid" },
@@ -121,7 +122,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-cinq-idees-pour-demarrer-une-seance",
-    photo: { file: "visite-bibliotheque.jpg", alt: "Visite d’une bibliothèque scolaire garnie de livres" },
+    photo: { file: "debut-de-seance.jpg", alt: "Une enseignante présente sa leçon devant la classe" },
     category: "ressources-pedagogiques",
     daysAgo: 12,
     cover: { bg: "#3A3531", fg: "#FFFFFF", accent: "#FD7A38", shape: "checks" },
@@ -146,7 +147,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-le-numerique-trois-usages-simples",
-    photo: { file: "atelier-numerique.jpg", alt: "Enseignants travaillant sur des ordinateurs portables" },
+    photo: { file: "numerique.jpg", alt: "Des élèves travaillent sur des ordinateurs portables, accompagnés par leur enseignante" },
     category: "innovation-pedagogique",
     daysAgo: 15,
     cover: { bg: "#7A2E05", fg: "#FFFFFF", accent: "#FDBA8C", shape: "grid" },
@@ -173,7 +174,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-membres-suivre-sa-progression",
-    photo: { file: "accompagnement-eleve.jpg", alt: "Un enseignant accompagne un élève à son bureau" },
+    photo: { file: "membres.jpg", alt: "Ordinateurs portables ouverts sur une plateforme en ligne" },
     category: "formation-des-enseignants",
     daysAgo: 3,
     visibility: "members",
@@ -195,7 +196,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-exemple-d-annonce-importante",
-    photo: { file: "forum-intervenants.jpg", alt: "Intervenants assis à une table lors d’une rencontre" },
+    photo: { file: "annonce.jpg", alt: "Un homme en veste parle dans un mégaphone" },
     category: "annonces-importantes",
     daysAgo: 1,
     cover: { bg: "#F95A05", fg: "#FFFFFF", accent: "#FFF4ED", shape: "circles" },
@@ -212,7 +213,7 @@ const ARTICLES = [
   },
   {
     slug: "demo-article-programme-pour-plus-tard",
-    photo: { file: "classe-primaire.jpg", alt: "Élèves dans une salle de classe de primaire" },
+    photo: { file: "programme.jpg", alt: "Un calendrier ouvert et un stylo posés sur une table" },
     category: "nouveaux-programmes",
     daysAgo: -3,
     cover: { bg: "#3A3531", fg: "#FFFFFF", accent: "#F95A05", shape: "grid" },
@@ -287,15 +288,13 @@ const categories = Object.fromEntries((await sql(`select id, slug, name from pub
 const existing = new Set((await sql(`select slug from public.news_articles where slug like 'demo-%'`)).map((r) => r.slug));
 
 /** A distinct file per kind of cover, so a cached old cover is never shown instead. */
-const coverPath = (id, a) => `${id}/${a.photo ? "photo-demo" : "couverture-demo"}.jpg`;
+const coverPath = (id, a) => `${id}/${a.photo ? "stock-demo" : "couverture-demo"}.jpg`;
 
 /** Cover of an article: its photo cropped to 16:9, or a generated cover. */
 async function coverFor(a, categoryName) {
   if (!a.photo) return { image: await render(a.cover, a.title, categoryName), alt: `Visuel de l’article « ${a.title} »` };
-  const image = await sharp(await readFile(new URL(`../../public/brand/photos/${a.photo.file}`, import.meta.url)))
-    .resize(W, H, { fit: "cover", position: "attention" })
-    .jpeg({ quality: 84, mozjpeg: true })
-    .toBuffer();
+  // Stock photos kept next to this script, already cropped to 16:9 (credits: news-photos/CREDITS.md).
+  const image = await readFile(new URL(`./news-photos/${a.photo.file}`, import.meta.url));
   return { image, alt: a.photo.alt };
 }
 
@@ -308,7 +307,7 @@ for (const a of ARTICLES) {
       const { error } = await storage.from("news-images").upload(path, image, { contentType: "image/jpeg", upsert: true });
       if (error) throw new Error(`upload ${path}: ${error.message}`);
       await sql(`update public.news_articles set cover_path = ${lit(path)}, cover_alt = ${lit(alt)} where id = ${lit(row.id)}`);
-      await storage.from("news-images").remove([`${row.id}/couverture-demo.jpg`]);
+      await storage.from("news-images").remove([`${row.id}/couverture-demo.jpg`, `${row.id}/photo-demo.jpg`]);
       console.log(`↻ ${a.title}: photo updated`);
     } else console.log(`• ${a.title}: already there, skipped`);
     continue;
