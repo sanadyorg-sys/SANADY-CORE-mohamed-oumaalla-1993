@@ -119,7 +119,7 @@ export function FeaturedNews({ article }: { article: NewsCardData }) {
           path={article.cover_path}
           alt={article.cover_alt}
           priority
-          className="transition duration-700 ease-out group-hover:scale-[1.03] motion-reduce:transition-none"
+          className="object-left transition duration-700 ease-out group-hover:scale-[1.03] motion-reduce:transition-none"
         />
         <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-accent-500 px-3 py-1 text-caption font-bold uppercase tracking-wider text-white shadow-md">
           À la une
