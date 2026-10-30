@@ -107,6 +107,14 @@ const docPaths = demoDocs.map((d) => d.file_path).filter(Boolean);
 if (docPaths.length) await admin.storage.from("library").remove(docPaths);
 await sql(`delete from public.library_resources where source_label = 'Démonstration SANADY'`);
 console.log(`✓ ${demoDocs.length} demonstration library documents removed`);
+// 4) Demonstration news articles (npm run demo:news) and their images.
+const demoNews = await sql(`select id from public.news_articles where author_label = 'Démonstration SANADY'`);
+for (const { id } of demoNews) {
+  const { data: files } = await admin.storage.from("news-images").list(id);
+  if (files?.length) await admin.storage.from("news-images").remove(files.map((f) => `${id}/${f.name}`));
+}
+await sql(`delete from public.news_articles where author_label = 'Démonstration SANADY'`);
+console.log(`✓ ${demoNews.length} demonstration news articles removed`);
 if (existsSync(STATE)) rmSync(STATE);
 console.log("Demo data removed. Categories are kept.");
 

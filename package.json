@@ -29,6 +29,7 @@
     "demo:process": "node --env-file=.env.local scripts/demo/add-demo-process.mjs",
     "demo:covers": "node --env-file=.env.local scripts/demo/add-demo-covers.mjs",
     "demo:library": "node --env-file=.env.local scripts/demo/add-demo-library.mjs",
+    "demo:news": "node --env-file=.env.local scripts/demo/add-demo-news.mjs",
     "demo:roles": "node --env-file=.env.local scripts/demo/add-demo-roles.mjs",
     "demo:videos": "node --env-file=.env.local scripts/demo/add-demo-videos.mjs",
     "mfa:reset": "node --env-file=.env.local scripts/reset-mfa.mjs"
