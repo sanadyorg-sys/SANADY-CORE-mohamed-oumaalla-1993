@@ -92,16 +92,24 @@ describe("news helpers", () => {
     expect(newsDisplayStatus({ status: "draft", published_at: null }, now)).toBe("draft");
   });
 
-  it("formats event dates in Moroccan time", () => {
-    expect(formatEventWhen("2026-11-12T14:00:00Z", "2026-11-12T16:00:00Z")).toBe("jeudi 12 novembre 2026 · 15 h 00 – 17 h 00");
+  it("formats event dates in Moroccan time", async () => {
+    // Built from Moroccan local times: the runtime's time-zone data decides the
+    // UTC offset (Node versions disagree for Morocco), the display must match.
+    const { casablancaToIso } = await import("@/lib/news");
+    expect(formatEventWhen(casablancaToIso("2026-11-12T15:00")!, casablancaToIso("2026-11-12T17:00"))).toBe("jeudi 12 novembre 2026 · 15 h 00 – 17 h 00");
   });
 });
 
 describe("Moroccan time in forms", () => {
   it("converts both ways", async () => {
     const { casablancaToIso, isoToCasablanca } = await import("@/lib/news");
-    expect(casablancaToIso("2026-11-12T15:00")).toBe("2026-11-12T14:00:00.000Z");
-    expect(isoToCasablanca("2026-11-12T14:00:00.000Z")).toBe("2026-11-12T15:00");
+    // Round trip, and agreement with Intl (the offset itself depends on the runtime's time-zone data).
+    for (const local of ["2026-11-12T15:00", "2026-03-01T08:30", "2026-07-15T23:45"]) {
+      const iso = casablancaToIso(local)!;
+      expect(isoToCasablanca(iso)).toBe(local);
+      const shown = new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Casablanca", dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
+      expect(shown.replace(" ", "T")).toBe(local);
+    }
     expect(casablancaToIso("pas une date")).toBeNull();
   });
 });
