@@ -44,15 +44,15 @@ export function SiteSearch({ className }: { className?: string }) {
           type="button"
           aria-label="Ouvrir la recherche"
           className={cn(
-            // Labelled pill while the links are in the drawer (768–1023 px); a round icon once they share the row.
-            "group flex h-9 items-center justify-center gap-2 rounded-full border border-line bg-ink-25/80 text-body text-ink-500 transition-colors hover:border-line-strong hover:bg-surface hover:text-ink-800 max-lg:pl-3 max-lg:pr-2 lg:w-9",
+            // Labelled pill while the links are in the drawer (768–1279 px); a round icon once they share the row.
+            "group flex h-9 items-center justify-center gap-2 rounded-full border border-line bg-ink-25/80 text-body text-ink-500 transition-colors hover:border-line-strong hover:bg-surface hover:text-ink-800 max-xl:pl-3 max-xl:pr-2 xl:w-9",
             className,
           )}
           title="Rechercher (Ctrl K)"
         >
           <Search className="size-4 text-ink-600 group-hover:text-accent-600" aria-hidden />
-          <span className="lg:hidden">Rechercher</span>
-          <kbd className="whitespace-nowrap rounded-md border border-line bg-surface px-1.5 py-0.5 font-sans text-caption font-semibold text-ink-500 lg:hidden">
+          <span className="xl:hidden">Rechercher</span>
+          <kbd className="whitespace-nowrap rounded-md border border-line bg-surface px-1.5 py-0.5 font-sans text-caption font-semibold text-ink-500 xl:hidden">
             Ctrl K
           </kbd>
         </button>

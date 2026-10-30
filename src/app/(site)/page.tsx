@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BrandDots } from "@/components/brand/brand-decor";
+import { LatestNews } from "@/components/news/latest-news";
 import { AudienceSection } from "@/components/site/audience-section";
 import { CatalogCard } from "@/components/site/catalog-card";
 import { Highlight, InView } from "@/components/site/effects";
@@ -233,6 +234,9 @@ export default async function HomePage() {
 
       {/* ─── For whom: teachers, schools, partners, companies ─────────────── */}
       <AudienceSection />
+
+      {/* ─── Latest news (only once something is published) ───────────────── */}
+      <LatestNews />
 
       {/* ─── FAQ ──────────────────────────────────────────────────────────── */}
       <FaqSection />

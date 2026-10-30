@@ -15,6 +15,13 @@ const MESSAGES: Record<string, string> = {
   invalid_transition: "Ce changement de statut n’est pas possible à cette étape.",
   already_exists: "Cet élément existe déjà.",
 
+  // Actualités
+  news_publish_forbidden: "Seul un administrateur SANADY peut publier, programmer, archiver ou modifier un article déjà publié. Enregistrez un brouillon : un administrateur le publiera.",
+  news_category_required: "Choisissez une catégorie avant de publier l’article.",
+  news_excerpt_required: "Rédigez une introduction (20 caractères au moins) avant de publier l’article.",
+  news_body_required: "Le texte de l’article est trop court pour être publié (50 caractères au moins).",
+  news_audience_required: "Choisissez au moins un établissement pour un article réservé à des établissements.",
+
   // SANADY Enterprise — company workspaces
   contract_not_signed: "Un espace ne peut être préparé qu’après la signature du contrat par un approbateur.",
   tenant_exists: "Un espace existe déjà pour ce client, ou cette adresse d’espace est déjà utilisée.",

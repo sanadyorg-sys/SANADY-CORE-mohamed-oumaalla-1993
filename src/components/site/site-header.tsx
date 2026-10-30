@@ -9,7 +9,7 @@ import { SiteSearch } from "./site-search";
 export function SiteHeader({ signedIn }: { signedIn: boolean }) {
   return (
     <ScrollHeader>
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:h-[4.5rem] lg:gap-4 lg:px-8 xl:gap-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:h-[4.5rem] lg:gap-4 lg:px-8">
         <Link href="/" className="shrink-0 rounded-sm" aria-label="SANADY — accueil">
           <BrandLogo className="h-9 lg:h-10" priority />
         </Link>
@@ -22,14 +22,12 @@ export function SiteHeader({ signedIn }: { signedIn: boolean }) {
             </Link>
           ) : (
             <>
-              {/* Icon only between 1024 and 1279 px, where the six links take the room. */}
               <Link
                 href="/connexion"
-                aria-label="Se connecter"
-                className={buttonClasses({ variant: "ghost", className: "max-sm:hidden lg:max-xl:size-9 lg:max-xl:px-0" })}
+                className={buttonClasses({ variant: "ghost", className: "max-sm:hidden" })}
               >
                 <LogIn aria-hidden />
-                <span className="lg:max-xl:sr-only">Se connecter</span>
+                Se connecter
               </Link>
               <Link href="/demande-acces" className={buttonClasses({ variant: "accent", className: "group max-sm:hidden" })}>
                 Demander un accès

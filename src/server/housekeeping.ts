@@ -36,6 +36,9 @@ export async function runHousekeeping() {
   });
   const { data: reminders, error: remErr } = await admin.rpc("queue_daily_notifications");
   if (remErr) console.error("[housekeeping] reminders", remErr.message);
+  // Actualités programmées dont l'heure est passée : e-mail à leur public.
+  const { data: news, error: newsErr } = await admin.rpc("queue_due_news_emails");
+  if (newsErr) console.error("[housekeeping] news e-mails", newsErr.message);
   const emails = await flushNotifications(100);
-  return { readings: (readings as number) ?? 0, deletions: ((done ?? []) as unknown[]).length, files, purged, reminders: (reminders as number) ?? 0, emails };
+  return { readings: (readings as number) ?? 0, deletions: ((done ?? []) as unknown[]).length, files, purged, reminders: (reminders as number) ?? 0, news: (news as number) ?? 0, emails };
 }

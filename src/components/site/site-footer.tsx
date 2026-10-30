@@ -19,6 +19,7 @@ const COLUMNS = [
     title: "Fondation",
     links: [
       { href: "/a-propos", label: "À propos de SANADY" },
+      { href: "/actualites", label: "Actualités" },
       { href: "/a-propos#etablissements", label: "Pour les établissements" },
       { href: "/verifier", label: "Vérifier un certificat" },
       { href: "/aide", label: "Aide & FAQ" },

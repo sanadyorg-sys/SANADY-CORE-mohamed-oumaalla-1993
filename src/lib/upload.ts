@@ -85,7 +85,7 @@ export function uploadToStorage({
   file,
   onProgress,
 }: {
-  bucket: "course-media" | "course-covers" | "library";
+  bucket: "course-media" | "course-covers" | "library" | "news-images";
   path: string;
   file: File;
   onProgress?: (ratio: number) => void;

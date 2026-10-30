@@ -35,6 +35,7 @@ import {
   UserRound,
   Users,
   type LucideIcon,
+  Newspaper,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -64,6 +65,8 @@ const PARTNERSHIP_ITEMS: NavItem[] = [
   { href: "/admin/partenariats/rapports", label: "Rapports aux partenaires", icon: FileText },
   { href: "/admin/partenariats/modeles", label: "Modèles de messages", icon: MessagesSquare },
 ];
+
+const NEWS_ITEM: NavItem = { href: "/admin/actualites", label: "Actualités", icon: Newspaper };
 
 const ENTERPRISE_ITEMS: NavItem[] = [
   { href: "/admin/partenariats/entreprises", label: "Demandes entreprises", icon: Inbox, exact: true },
@@ -95,7 +98,10 @@ function baseNavigation(area: Area, institutionId: string | undefined, role: Nav
     return [{ title: "SANADY Enterprise", items: ENTERPRISE_ITEMS }];
   }
   if (area === "admin" && role === "partners") {
-    return [{ title: "Partenariats", items: PARTNERSHIP_ITEMS }];
+    return [
+      { title: "Partenariats", items: PARTNERSHIP_ITEMS },
+      { title: "Communication", items: [NEWS_ITEM] },
+    ];
   }
   if (area === "admin" && role === "trainer") {
     return [
@@ -121,6 +127,7 @@ function baseNavigation(area: Area, institutionId: string | undefined, role: Nav
           { href: "/admin/certificats", label: "Certificats", icon: Award },
         ],
       },
+      { title: "Communication", items: [NEWS_ITEM] },
     ];
   }
   if (area === "admin") {
@@ -136,6 +143,7 @@ function baseNavigation(area: Area, institutionId: string | undefined, role: Nav
           { href: "/admin/certificats", label: "Certificats", icon: Award },
         ],
       },
+      { title: "Communication", items: [NEWS_ITEM] },
       {
         title: "Organisation",
         items: [
@@ -176,6 +184,7 @@ function baseNavigation(area: Area, institutionId: string | undefined, role: Nav
           { href: `${base}/statistiques`, label: "Statistiques", icon: ChartNoAxesCombined },
           { href: `${base}/rapports`, label: "Rapports", icon: FileText },
           ...(enterprise ? [] : [{ href: "/espace/bibliotheque", label: "Bibliothèque", icon: BookMarked }]),
+          ...(enterprise ? [] : [{ href: "/actualites", label: "Actualités", icon: Newspaper }]),
         ],
       },
     ];
@@ -200,6 +209,7 @@ function baseNavigation(area: Area, institutionId: string | undefined, role: Nav
         { href: "/espace/evaluations", label: "Mes évaluations", icon: ClipboardCheck },
         { href: "/espace/certificats", label: enterprise ? "Mes attestations" : "Mes certificats", icon: Award },
         ...(enterprise ? [] : [{ href: "/espace/bibliotheque", label: "Bibliothèque", icon: BookMarked }]),
+        ...(enterprise ? [] : [{ href: "/actualites", label: "Actualités", icon: Newspaper }]),
         { href: "/espace/profil", label: "Mon profil", icon: UserRound },
       ],
     },

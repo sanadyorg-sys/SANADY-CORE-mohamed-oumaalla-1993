@@ -75,6 +75,12 @@ export function notificationEmail(kind: string, p: P, name: string) {
       return m(`Renouvellement à préparer : ${p.reference}`, "Un contrat arrive à échéance", [
         `Le contrat <strong>${esc(p.reference)}</strong> — ${esc(p.title)} — se termine le <strong>${date(p.end_on)}</strong>.`,
       ], { label: "Voir le contrat", url: app(`/admin/partenariats/entreprises/contrats/${p.contract_id}`) });
+    case "news_published":
+      return m(`Actualité SANADY : ${p.title}`, String(p.title ?? "Nouvelle actualité"), [
+        "La Fondation Sanady a publié une nouvelle actualité :",
+        `<strong>${esc(p.title)}</strong>`,
+        ...(p.excerpt ? [esc(p.excerpt)] : []),
+      ], { label: "Lire l’article", url: app(`/actualites/${p.slug}`) });
     case "deletion_due":
       return m(`Suppression des données prévue : ${p.space}`, "Une date de suppression approche", [
         Number(p.days) > 0
