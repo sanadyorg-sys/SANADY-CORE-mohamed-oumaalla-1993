@@ -187,17 +187,23 @@ export default async function HomePage() {
           <p className="mt-3 text-reading text-ink-600">Une expérience fluide, conçue pour s’adapter aux contraintes de temps des enseignants.</p>
         </Reveal>
         <InView as="ol" threshold={0.45} className="relative mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-          {/* The path fills from the invitation to the certificate. */}
-          <span aria-hidden className="absolute left-[12.5%] right-[12.5%] top-8 hidden h-1 overflow-hidden rounded-full bg-ink-100 lg:block">
-            <span className="path-fill block h-full w-full rounded-full bg-gradient-to-r from-accent-300 via-accent-500 to-accent-600" />
+          {/* The path fills from the invitation to the certificate; a glowing head leads it. */}
+          <span aria-hidden className="absolute left-[12.5%] right-[12.5%] top-8 hidden h-1 lg:block">
+            <span className="absolute inset-0 overflow-hidden rounded-full bg-ink-100">
+              <span className="path-fill relative block h-full w-full overflow-hidden rounded-full bg-gradient-to-r from-accent-300 via-accent-500 to-accent-600" />
+            </span>
+            <span className="path-comet absolute inset-0">
+              <span className="absolute left-0 top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-500 shadow-[0_0_0_4px_rgb(249_90_5/0.2),0_0_18px_4px_rgb(249_90_5/0.55)]" />
+            </span>
           </span>
           {STEPS.map((s, i) => {
             const last = i === STEPS.length - 1;
             return (
               <li key={s.title} className="group relative flex flex-col items-center text-center" style={{ "--i": i } as React.CSSProperties}>
                 <span className="relative">
+                  <span aria-hidden className="path-ripple absolute inset-0 rounded-2xl border-2 border-accent-400" />
                   <span
-                    className={`path-icon relative flex size-16 items-center justify-center rounded-2xl bg-accent-600 text-white shadow-lg ring-8 ring-surface group-hover:-translate-y-1 ${last ? "path-finale" : ""}`}
+                    className={`path-icon relative flex size-16 items-center justify-center rounded-2xl bg-accent-600 text-white shadow-lg ring-8 ring-surface transition-transform duration-300 group-hover:-translate-y-1 ${last ? "path-finale" : ""}`}
                   >
                     <s.icon className="size-6" aria-hidden />
                   </span>
@@ -215,9 +221,13 @@ export default async function HomePage() {
                       ))
                     : null}
                 </span>
-                <p className="mt-6 text-caption font-bold uppercase tracking-wider text-accent-700">Étape {i + 1}</p>
-                <h3 className="mt-1 text-section font-bold text-ink-900">{s.title}</h3>
-                <p className="mt-2 max-w-[16rem] text-body leading-relaxed text-ink-600">{s.text}</p>
+                <p className="path-text mt-6 text-caption font-bold uppercase tracking-wider text-accent-700">Étape {i + 1}</p>
+                <h3 className="path-text mt-1 text-section font-bold text-ink-900" style={{ "--t": 1 } as React.CSSProperties}>
+                  {s.title}
+                </h3>
+                <p className="path-text mt-2 max-w-[16rem] text-body leading-relaxed text-ink-600" style={{ "--t": 2 } as React.CSSProperties}>
+                  {s.text}
+                </p>
               </li>
             );
           })}

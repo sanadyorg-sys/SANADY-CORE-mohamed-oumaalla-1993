@@ -586,35 +586,107 @@
   transform: translateY(12px) scale(0.97);
 }
 
-/* Course path: the line fills, each step is ticked off in turn. */
-[data-inview="shown"] .path-fill {
-  transform-origin: left;
-  transition: transform 2.2s cubic-bezier(0.65, 0, 0.35, 1) 0.3s;
+/* Course path: one timeline. The line fills at a steady pace behind a glowing
+   head; each step lights up exactly when the line reaches it (step i at
+   --path-start + i × --path-step), pops, sends one ripple, gets its check,
+   and its text rises in. Without data-inview everything is simply shown. */
+[data-inview] {
+  --path-start: 0.4s;
+  --path-step: 0.9s;
+}
+[data-inview] li {
+  --reach: calc(var(--path-start) + var(--i, 0) * var(--path-step));
 }
 [data-inview="pending"] .path-fill {
   transform: scaleX(0);
 }
-[data-inview="shown"] .path-icon {
-  transition:
-    background-color 0.5s ease,
-    transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
-  transition-delay: calc(0.35s + var(--i, 0) * 0.55s);
+[data-inview="shown"] .path-fill {
+  transform-origin: left;
+  animation: path-fill calc(3 * var(--path-step)) linear var(--path-start) both;
 }
+@keyframes path-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+/* Once complete, a soft light runs along the line from time to time. */
+[data-inview="shown"] .path-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.75), transparent);
+  width: 30%;
+  transform: translateX(-120%);
+  animation: path-sweep 4.5s ease-in-out calc(var(--path-start) + 3 * var(--path-step) + 0.8s) infinite;
+}
+@keyframes path-sweep {
+  0% { transform: translateX(-120%); }
+  45%, 100% { transform: translateX(420%); }
+}
+.path-comet {
+  opacity: 0;
+}
+[data-inview="shown"] .path-comet {
+  animation: path-comet calc(3 * var(--path-step)) linear var(--path-start) both;
+}
+@keyframes path-comet {
+  0% { translate: 0 0; opacity: 0; }
+  6% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { translate: 100% 0; opacity: 0; }
+}
+
 [data-inview="pending"] .path-icon {
-  background-color: var(--color-brand-800);
+  background-color: var(--color-ink-100);
+  color: var(--color-ink-400);
+  scale: 0.86;
+  box-shadow: none;
 }
-[data-inview="shown"] .path-check {
-  transition:
-    opacity 0.3s ease,
-    transform 0.45s cubic-bezier(0.23, 1, 0.32, 1);
-  transition-delay: calc(0.5s + var(--i, 0) * 0.55s);
+[data-inview="shown"] .path-icon {
+  animation: path-pop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) var(--reach) both;
+}
+@keyframes path-pop {
+  0% { background-color: var(--color-ink-100); color: var(--color-ink-400); scale: 0.86; }
+  45% { background-color: var(--color-accent-600); color: #fff; scale: 1.14; }
+  100% { scale: 1; }
+}
+.path-ripple {
+  opacity: 0;
+  pointer-events: none;
+}
+[data-inview="shown"] .path-ripple {
+  animation: path-ripple 1s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--reach) + 0.1s) both;
+}
+@keyframes path-ripple {
+  0% { opacity: 0.9; scale: 1; }
+  100% { opacity: 0; scale: 1.75; }
 }
 [data-inview="pending"] .path-check {
   opacity: 0;
-  transform: scale(0.3);
+  scale: 0.2;
+}
+[data-inview="shown"] .path-check {
+  animation: path-check 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--reach) + 0.3s) both;
+}
+@keyframes path-check {
+  0% { opacity: 0; scale: 0.2; rotate: -60deg; }
+  60% { opacity: 1; scale: 1.25; rotate: 8deg; }
+  100% { opacity: 1; scale: 1; rotate: 0deg; }
+}
+[data-inview="pending"] .path-text {
+  opacity: 0;
+  translate: 0 10px;
+}
+[data-inview="shown"] .path-text {
+  animation: path-text 0.6s cubic-bezier(0.23, 1, 0.32, 1) calc(var(--reach) + 0.12s + var(--t, 0) * 0.08s) both;
+}
+@keyframes path-text {
+  from { opacity: 0; translate: 0 10px; }
+  to { opacity: 1; translate: 0 0; }
 }
 [data-inview="shown"] .path-finale {
-  animation: pulse-glow 2.4s ease-in-out 2.4s 2;
+  animation:
+    path-pop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) var(--reach) both,
+    pulse-glow 2.4s ease-in-out calc(var(--reach) + 0.8s) 2;
 }
 
 /* Certificate: a burst of Sanady dots (plays only after scrolling into view). */
@@ -630,7 +702,7 @@
   pointer-events: none;
 }
 [data-inview="shown"] .confetti {
-  animation: confetti-burst 1.4s cubic-bezier(0.2, 0.7, 0.3, 1) 2.25s both;
+  animation: confetti-burst 1.4s cubic-bezier(0.2, 0.7, 0.3, 1) calc(var(--reach, 2.25s) + 0.25s) both;
 }
 @keyframes confetti-burst {
   0% { opacity: 1; transform: translate(-50%, -50%) scale(0.4); }
