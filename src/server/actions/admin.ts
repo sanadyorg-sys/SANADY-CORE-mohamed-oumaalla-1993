@@ -150,6 +150,35 @@ export async function setUserStatus(userId: string, status: "active" | "suspende
   return { ok: true, message: status === "suspended" ? "Compte suspendu." : "Compte réactivé." };
 }
 
+/**
+ * Lost phone: removes the person's two-factor factors. The database authorizes
+ * and logs the request first; the person sets 2FA up again at the next sign-in
+ * if their role requires it.
+ */
+export async function resetUserMfa(userId: string): Promise<ActionState> {
+  await requireSanadyAdmin();
+  if (!uuidSchema.safeParse(userId).success) return { ok: false, message: messageFor("not_found") };
+  const admin = createAdminClient();
+  const { data, error: listError } = await admin.auth.admin.mfa.listFactors({ userId });
+  if (listError) {
+    console.error("[admin] mfa list failed", listError.code);
+    return { ok: false, message: "La réinitialisation n’a pas abouti. Veuillez réessayer." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("authorize_mfa_reset", { p_user: userId, p_factors: data.factors.length });
+  if (error) return { ok: false, message: errorMessage(error) };
+  if (data.factors.length === 0) return { ok: true, message: "Ce compte n’a pas de double authentification active : rien à réinitialiser." };
+
+  for (const factor of data.factors) {
+    const { error: deleteError } = await admin.auth.admin.mfa.deleteFactor({ userId, id: factor.id });
+    if (deleteError) {
+      console.error("[admin] mfa delete failed", deleteError.code);
+      return { ok: false, message: "La réinitialisation n’a pas abouti. Veuillez réessayer." };
+    }
+  }
+  return { ok: true, message: "Double authentification réinitialisée. La personne pourra se connecter avec son mot de passe." };
+}
+
 export async function removePlatformAdmin(userId: string): Promise<ActionState> {
   const viewer = await requireSanadyAdmin();
   if (userId === viewer.id) return { ok: false, message: "Vous ne pouvez pas retirer votre propre rôle." };

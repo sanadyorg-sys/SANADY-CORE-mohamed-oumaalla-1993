@@ -9,6 +9,7 @@ const MESSAGES: Record<string, string> = {
   not_found: "L’élément demandé est introuvable ou n’est plus disponible.",
   account_unavailable: "Ce compte n’est pas actif. Contactez l’administration SANADY.",
   cannot_change_own_status: "Vous ne pouvez pas modifier le statut de votre propre compte.",
+  cannot_reset_own_mfa: "Vous ne pouvez pas réinitialiser votre propre double authentification : demandez-le à un autre administrateur.",
   invalid_first_name: "Veuillez saisir votre prénom.",
   invalid_last_name: "Veuillez saisir votre nom.",
   rate_limited: "Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.",

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BadgeCheck, GraduationCap, Handshake, ShieldCheck, UserRoundCog } from "lucide-react";
 import { PartnershipApproverForm, PlatformRoleForm } from "@/components/admin/team-forms";
+import { MfaResetButton } from "@/components/admin/mfa-reset-button";
 import { ActionButton } from "@/components/common/action-button";
 import { InviteForm } from "@/components/common/invite-form";
 import { Badge, Card, CardBody, CardHeader, PageHeader } from "@/components/ui/surface";
@@ -52,6 +53,7 @@ export default async function AdminsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {a.user.status !== "active" ? <Badge tone="danger">Suspendu</Badge> : null}
+                  {a.user.id !== viewer.id ? <MfaResetButton userId={a.user.id} /> : null}
                   {a.user.id !== viewer.id ? (
                     <ActionButton
                       variant="danger-ghost"
@@ -122,6 +124,7 @@ export default async function AdminsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {m.user.status !== "active" ? <Badge tone="danger">Suspendu</Badge> : null}
+                    <MfaResetButton userId={m.user.id} />
                     <ActionButton
                       variant="danger-ghost"
                       action={removePlatformRole.bind(null, m.user.id)}

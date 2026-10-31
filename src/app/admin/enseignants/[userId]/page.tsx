@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Ban, CircleCheck } from "lucide-react";
 import { GrantSelect } from "@/components/admin/grant-select";
+import { MfaResetButton } from "@/components/admin/mfa-reset-button";
 import { ResetAttemptsForm } from "@/components/admin/reset-attempts-form";
 import { ActionButton } from "@/components/common/action-button";
 import { LearnerProgress } from "@/components/tracking/learner-progress";
@@ -36,7 +37,10 @@ export default async function PersonPage(props: PageProps<"/admin/enseignants/[u
         title={profile.full_name || profile.email}
         description={profile.email}
         actions={
-          self ? null : profile.status === "active" ? (
+          self ? null : (
+            <>
+            <MfaResetButton userId={userId} size="md" />
+            {profile.status === "active" ? (
             <ActionButton
               size="md"
               variant="danger-ghost"
@@ -53,6 +57,8 @@ export default async function PersonPage(props: PageProps<"/admin/enseignants/[u
             <ActionButton size="md" action={setUserStatus.bind(null, userId, "active")}>
               <CircleCheck aria-hidden /> Réactiver le compte
             </ActionButton>
+            )}
+            </>
           )
         }
       >

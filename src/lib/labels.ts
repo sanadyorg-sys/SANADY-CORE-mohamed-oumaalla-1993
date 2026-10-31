@@ -102,6 +102,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   quiz_attempts_reset: "Réinitialisation des tentatives",
   user_suspended: "Suspension du compte",
   user_reactivated: "Réactivation du compte",
+  mfa_reset: "Réinitialisation de la double authentification",
 };
 
 export const LIBRARY_KINDS: Record<LibraryKind, string> = {

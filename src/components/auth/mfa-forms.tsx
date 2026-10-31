@@ -206,7 +206,7 @@ export function MfaVerifyForm({ suite }: { suite: string }) {
       </Button>
       <p className="flex items-start gap-2 text-label text-ink-500">
         <KeyRound className="mt-0.5 size-4 shrink-0" aria-hidden />
-        Téléphone perdu ? Demandez à un autre administrateur SANADY de réinitialiser votre double authentification.
+        Téléphone perdu ? Demandez à un administrateur SANADY de réinitialiser votre double authentification.
       </p>
     </form>
   );
