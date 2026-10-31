@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   Award,
   BookMarked,
@@ -36,6 +37,7 @@ import {
   Users,
   type LucideIcon,
   Newspaper,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -53,6 +55,9 @@ interface NavSection {
   title?: string;
   items: NavItem[];
 }
+
+/** Menus with more links than this fold their sections. */
+const FOLD_ABOVE = 14;
 
 const PARTNERSHIP_ITEMS: NavItem[] = [
   { href: "/admin/partenariats", label: "Candidatures", icon: Handshake, exact: true },
@@ -233,43 +238,63 @@ export function SidebarNav({
 }) {
   const pathname = usePathname();
   const sections = navigationFor(area, institutionId, role, enterprise, approver);
+  // Long menus (the administrators' one) fold their sections; the current section opens by itself.
+  const foldable = sections.reduce((n, section) => n + section.items.length, 0) > FOLD_ABOVE;
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  const isActive = (item: NavItem) => (item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`));
 
   return (
-    <nav aria-label="Navigation principale" className="space-y-6">
-      {sections.map((section, i) => (
-        <div key={i}>
-          {section.title ? (
-            <p className="mb-1.5 px-3 text-caption font-semibold uppercase tracking-wider text-ink-400">{section.title}</p>
-          ) : null}
-          <ul className="space-y-0.5">
-            {section.items.map((item) => {
-              const active = item.exact
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const Icon = item.icon;
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={onNavigate}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "group flex h-9 items-center gap-3 rounded-md px-3 text-body font-medium transition-colors",
-                      active ? "bg-accent-50 text-ink-900 shadow-[inset_3px_0_0_var(--color-accent-500)]" : "text-ink-600 hover:bg-ink-50 hover:text-ink-900",
-                    )}
-                  >
-                    <Icon
-                      className={cn("size-[1.0625rem] shrink-0", active ? "text-accent-600" : "text-ink-400 group-hover:text-ink-600")}
-                      aria-hidden
-                    />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+    <nav aria-label="Navigation principale" className={foldable ? "space-y-1" : "space-y-6"}>
+      {sections.map((section, i) => {
+        const canFold = foldable && Boolean(section.title) && section.items.length > 1;
+        const hasActive = section.items.some(isActive);
+        const open = !canFold || (toggled[section.title!] ?? hasActive);
+        return (
+          <div key={i} className={foldable && i > 0 && !canFold ? "pt-2" : undefined}>
+            {canFold ? (
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => setToggled((t) => ({ ...t, [section.title!]: !open }))}
+                className="flex h-8 w-full items-center gap-2 rounded-md px-3 text-caption font-semibold uppercase tracking-wider text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-800"
+              >
+                <span className="truncate">{section.title}</span>
+                {!open && hasActive ? <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-accent-500" /> : null}
+                <ChevronDown className={cn("ml-auto size-3.5 shrink-0 transition-transform duration-200", open ? "rotate-180" : "")} aria-hidden />
+              </button>
+            ) : section.title ? (
+              <p className="mb-1.5 px-3 text-caption font-semibold uppercase tracking-wider text-ink-400">{section.title}</p>
+            ) : null}
+            {open ? (
+              <ul className={cn("space-y-0.5", canFold && "pb-2 pt-0.5")}>
+                {section.items.map((item) => {
+                  const active = isActive(item);
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={onNavigate}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "group flex h-9 items-center gap-3 rounded-md px-3 text-body font-medium transition-colors",
+                          active ? "bg-accent-50 text-ink-900 shadow-[inset_3px_0_0_var(--color-accent-500)]" : "text-ink-600 hover:bg-ink-50 hover:text-ink-900",
+                        )}
+                      >
+                        <Icon
+                          className={cn("size-[1.0625rem] shrink-0", active ? "text-accent-600" : "text-ink-400 group-hover:text-ink-600")}
+                          aria-hidden
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </div>
+        );
+      })}
     </nav>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { HTMLAttributes, ReactNode } from "react";
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -127,20 +128,29 @@ export function PageHeader({
   eyebrow,
   actions,
   children,
+  icon: Icon,
 }: {
   title: ReactNode;
   description?: ReactNode;
   eyebrow?: ReactNode;
   actions?: ReactNode;
   children?: ReactNode;
+  icon?: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <header className="mb-6">
       {eyebrow ? <div className="mb-2 text-label text-ink-500">{eyebrow}</div> : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 max-w-3xl">
-          <h1 className="text-title font-semibold text-ink-900">{title}</h1>
-          {description ? <p className="mt-1 text-body text-ink-600">{description}</p> : null}
+        <div className="flex min-w-0 max-w-3xl items-start gap-4">
+          {Icon ? (
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent-500 text-white shadow-sm shadow-accent-500/25">
+              <Icon className="size-5" aria-hidden />
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <h1 className="text-title font-semibold tracking-tight text-ink-900">{title}</h1>
+            {description ? <p className="mt-1 text-body text-ink-600">{description}</p> : null}
+          </div>
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
@@ -174,21 +184,39 @@ export function StatTile({
   value,
   detail,
   icon: Icon,
+  href,
+  highlight = false,
 }: {
   label: string;
   value: ReactNode;
   detail?: ReactNode;
   icon?: React.ComponentType<{ className?: string }>;
+  /** Makes the whole tile a link. */
+  href?: string;
+  /** Draws attention: something is waiting here. */
+  highlight?: boolean;
 }) {
-  return (
-    <Card className="px-5 py-4">
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <p className="text-label font-medium text-ink-600">{label}</p>
-        {Icon ? <Icon className="size-4 text-ink-400" aria-hidden /> : null}
+        {Icon ? (
+          <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", highlight ? "bg-accent-500 text-white" : "bg-accent-50 text-accent-700")}>
+            <Icon className="size-4" aria-hidden />
+          </span>
+        ) : null}
       </div>
       <p className="tabular mt-2 text-stat font-semibold text-ink-900">{value}</p>
       {detail ? <p className="mt-1 text-caption text-ink-500">{detail}</p> : null}
-    </Card>
+    </>
+  );
+  const tile = cn("px-5 py-4", highlight && "border-accent-300 bg-accent-50/40");
+  return href ? (
+    <Link href={href} className="block rounded-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+      <Card className={cn(tile, "h-full transition-colors hover:border-accent-300")}>{content}</Card>
+    </Link>
+  ) : (
+    <Card className={tile}>{content}</Card>
   );
 }
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Briefcase, CalendarClock } from "lucide-react";
+import { ArrowRight, BadgeCheck, Briefcase, CalendarClock, ClipboardList, FilePenLine, Inbox, LifeBuoy, ListChecks, RefreshCw, ShieldAlert, TriangleAlert, type LucideIcon } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
 import { Alert, Badge, Card, CardHeader, PageHeader, StatTile } from "@/components/ui/surface";
@@ -13,6 +13,25 @@ import { runHousekeeping } from "@/server/housekeeping";
 import { enterpriseWatchlist, listClients, listProposals, listRequests, openEnterpriseTasks, requestCounts } from "@/server/queries/enterprise";
 
 export const metadata: Metadata = { title: "SANADY Enterprise — demandes" };
+
+/** One line of the « À surveiller » panel: what, how urgent, and where to act. */
+function WatchRow({ href, icon: Icon, tone = "warning", title, detail }: { href: string; icon: LucideIcon; tone?: "warning" | "danger" | "neutral"; title: string; detail?: string }) {
+  const tones = { warning: "bg-warning-50 text-warning-700", danger: "bg-danger-50 text-danger-700", neutral: "bg-ink-100 text-ink-600" };
+  return (
+    <li>
+      <Link href={href} className="group flex items-start gap-3 px-5 py-3 transition-colors hover:bg-ink-25">
+        <span className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${tones[tone]}`}>
+          <Icon className="size-4" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-body font-medium text-ink-900 group-hover:text-accent-700">{title}</span>
+          {detail ? <span className={`block text-caption ${tone === "danger" ? "font-semibold text-danger-600" : "text-ink-500"}`}>{detail}</span> : null}
+        </span>
+        <ArrowRight className="mt-2 size-4 shrink-0 -translate-x-1 text-accent-600 opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100" aria-hidden />
+      </Link>
+    </li>
+  );
+}
 
 const TABS: Record<string, { label: string; status: RequestStatus | "open" }> = {
   ouvertes: { label: "À traiter", status: "open" },
@@ -43,8 +62,9 @@ export default async function EnterpriseInboxPage(props: PageProps<"/admin/parte
   return (
     <>
       <PageHeader
+        icon={Briefcase}
         title="SANADY Enterprise"
-        description="Demandes de formation des organisations, reçues depuis /partenariats/entreprises (page non publiée)."
+        description="Les demandes de formation des organisations, de la première prise de contact au service actif."
         actions={
           <Link href="/admin/partenariats/entreprises/clients" className={buttonClasses({ variant: "secondary" })}>
             Clients et prospects
@@ -57,10 +77,10 @@ export default async function EnterpriseInboxPage(props: PageProps<"/admin/parte
       </Alert>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Nouvelles demandes" value={counts.received ?? 0} />
-        <StatTile label="Demandes qualifiées" value={counts.qualified ?? 0} />
-        <StatTile label="Propositions en cours" value={pending} />
-        <StatTile label="Clients en service actif" value={active} />
+        <StatTile label="Nouvelles demandes" value={counts.received ?? 0} icon={Inbox} highlight={(counts.received ?? 0) > 0} detail={counts.received ? "À examiner" : "Rien en attente"} />
+        <StatTile label="Demandes qualifiées" value={counts.qualified ?? 0} icon={ListChecks} detail="Prêtes pour une proposition" />
+        <StatTile label="Propositions en cours" value={pending} icon={FilePenLine} href="/admin/partenariats/entreprises/propositions" detail="Voir les propositions" />
+        <StatTile label="Clients en service actif" value={active} icon={BadgeCheck} href="/admin/partenariats/entreprises/clients" detail="Voir les clients" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -94,12 +114,19 @@ export default async function EnterpriseInboxPage(props: PageProps<"/admin/parte
                   {rows.map((r) => (
                     <TR key={r.id}>
                       <TD>
-                        <Link href={`/admin/partenariats/entreprises/demandes/${r.id}`} className="font-semibold text-ink-900 hover:text-accent-700 hover:underline">
-                          {r.org_name}
-                        </Link>
-                        <span className="block text-caption text-ink-500">
-                          {r.reference} · {EMPLOYEE_COUNTS[r.employee_count as keyof typeof EMPLOYEE_COUNTS]} salariés
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-800 text-label font-semibold text-white">
+                            {r.org_name.slice(0, 1).toUpperCase()}
+                          </span>
+                          <div className="min-w-0">
+                            <Link href={`/admin/partenariats/entreprises/demandes/${r.id}`} className="font-semibold text-ink-900 hover:text-accent-700 hover:underline">
+                              {r.org_name}
+                            </Link>
+                            <span className="block text-caption text-ink-500">
+                              {r.reference} · {EMPLOYEE_COUNTS[r.employee_count as keyof typeof EMPLOYEE_COUNTS]} salariés
+                            </span>
+                          </div>
+                        </div>
                       </TD>
                       <TD>{ENTERPRISE_SERVICES[r.service].short}</TD>
                       <TD>
@@ -122,23 +149,34 @@ export default async function EnterpriseInboxPage(props: PageProps<"/admin/parte
         <div className="space-y-6 self-start">
         {watch && (watch.renewals.length || watch.overages.length || watch.approvals || watch.support_waiting || watch.deletions.length) ? (
           <Card>
-            <CardHeader title="À surveiller" description={watch.approvals ? `${watch.approvals} contrat(s) en attente d’un approbateur` : "Renouvellements et dépassements"} />
+            <CardHeader title="À surveiller" />
             <ul className="divide-y divide-line">
+              {watch.approvals ? (
+                <WatchRow
+                  href="/admin/partenariats/entreprises/contrats"
+                  icon={ClipboardList}
+                  title={`${watch.approvals} contrat${watch.approvals > 1 ? "s" : ""} à approuver`}
+                  detail="En attente d’un approbateur"
+                />
+              ) : null}
               {watch.support_waiting ? (
-                <li className="px-5 py-3">
-                  <Link href="/admin/partenariats/entreprises/assistance" className="font-medium text-ink-900 hover:text-accent-700 hover:underline">
-                    Assistance : {watch.support_waiting} demande(s) à traiter
-                  </Link>
-                  {watch.support_urgent ? <span className="block text-caption font-semibold text-danger-600">dont {watch.support_urgent} urgente(s) sans réponse</span> : null}
-                </li>
+                <WatchRow
+                  href="/admin/partenariats/entreprises/assistance"
+                  icon={LifeBuoy}
+                  tone={watch.support_urgent ? "danger" : "warning"}
+                  title={`Assistance : ${watch.support_waiting} demande${watch.support_waiting > 1 ? "s" : ""} à traiter`}
+                  detail={watch.support_urgent ? `dont ${watch.support_urgent} urgente(s) sans réponse` : undefined}
+                />
               ) : null}
               {watch.deletions.map((d) => (
-                <li key={`d-${d.tenant_id}`} className="px-5 py-3">
-                  <Link href={`/admin/partenariats/entreprises/espaces/${d.tenant_id}#suppression`} className="font-medium text-ink-900 hover:text-accent-700 hover:underline">
-                    Suppression des données : {d.tenant}
-                  </Link>
-                  <span className={d.status === "confirmed" || d.due_on <= today ? "block text-caption font-semibold text-danger-600" : "block text-caption text-warning-700"}>
-                    {d.on_hold
+                <WatchRow
+                  key={`d-${d.tenant_id}`}
+                  href={`/admin/partenariats/entreprises/espaces/${d.tenant_id}#suppression`}
+                  icon={ShieldAlert}
+                  tone={d.status === "confirmed" || d.due_on <= today ? "danger" : "warning"}
+                  title={`Suppression des données : ${d.tenant}`}
+                  detail={
+                    d.on_hold
                       ? "Suspendue"
                       : d.status === "confirmed"
                         ? `Confirmée — exécution à partir du ${d.execute_after ? formatDate(d.execute_after) : "—"}`
@@ -146,27 +184,22 @@ export default async function EnterpriseInboxPage(props: PageProps<"/admin/parte
                           ? `Proposée — date prévue le ${formatDate(d.due_on)}`
                           : d.due_on <= today
                             ? `Date prévue dépassée (${formatDate(d.due_on)}) : à proposer ou reporter`
-                            : `Prévue le ${formatDate(d.due_on)} : prévenir l’organisation`}
-                  </span>
-                </li>
+                            : `Prévue le ${formatDate(d.due_on)} : prévenir l’organisation`
+                  }
+                />
               ))}
               {watch.renewals.map((r) => (
-                <li key={`r-${r.id}`} className="px-5 py-3">
-                  <Link href={`/admin/partenariats/entreprises/contrats/${r.id}`} className="font-medium text-ink-900 hover:text-accent-700 hover:underline">
-                    Renouvellement : {r.title}
-                  </Link>
-                  <span className="block text-caption text-warning-700">
-                    {r.organization} · fin le {formatDate(r.end_on)}
-                  </span>
-                </li>
+                <WatchRow key={`r-${r.id}`} href={`/admin/partenariats/entreprises/contrats/${r.id}`} icon={RefreshCw} title={`Renouvellement : ${r.title}`} detail={`${r.organization} · fin le ${formatDate(r.end_on)}`} />
               ))}
               {watch.overages.map((o) => (
-                <li key={`o-${o.id}`} className="px-5 py-3">
-                  <Link href={`/admin/partenariats/entreprises/espaces/${o.tenant_id}#utilisation`} className="font-medium text-ink-900 hover:text-accent-700 hover:underline">
-                    Dépassement à examiner : {o.tenant}
-                  </Link>
-                  <span className="block text-caption text-danger-600">Relevé de {new Date(o.period).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</span>
-                </li>
+                <WatchRow
+                  key={`o-${o.id}`}
+                  href={`/admin/partenariats/entreprises/espaces/${o.tenant_id}#utilisation`}
+                  icon={TriangleAlert}
+                  tone="danger"
+                  title={`Dépassement à examiner : ${o.tenant}`}
+                  detail={`Relevé de ${new Date(o.period).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`}
+                />
               ))}
             </ul>
           </Card>
@@ -178,26 +211,26 @@ export default async function EnterpriseInboxPage(props: PageProps<"/admin/parte
               {tasks.map((t) => {
                 const late = t.due_on && t.due_on < today;
                 return (
-                  <li key={t.id} className="px-5 py-3">
-                    <Link href={`/admin/partenariats/entreprises/clients/${t.organization_id}`} className="font-medium text-ink-900 hover:text-accent-700 hover:underline">
-                      {t.title}
+                  <li key={t.id}>
+                    <Link href={`/admin/partenariats/entreprises/clients/${t.organization_id}`} className="group block px-5 py-3 transition-colors hover:bg-ink-25">
+                      <span className="block text-body font-medium text-ink-900 group-hover:text-accent-700">{t.title}</span>
+                      <span className="block text-caption text-ink-500">{t.organization?.name}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-ink-500">
+                        {t.due_on ? (
+                          <span className={late ? "inline-flex items-center gap-1 rounded-md bg-danger-50 px-1.5 py-0.5 font-semibold text-danger-700" : "inline-flex items-center gap-1 rounded-md bg-ink-100 px-1.5 py-0.5 font-medium text-ink-700"}>
+                            <CalendarClock className="size-3.5" aria-hidden /> {late ? "En retard — " : ""}
+                            {formatDate(t.due_on)}
+                          </span>
+                        ) : null}
+                        {t.assignee ? <span>{displayName(t.assignee)}</span> : null}
+                      </span>
                     </Link>
-                    <span className="mt-0.5 flex flex-wrap gap-x-2 text-caption text-ink-500">
-                      {t.organization?.name}
-                      {t.due_on ? (
-                        <span className={late ? "inline-flex items-center gap-1 font-semibold text-danger-600" : "inline-flex items-center gap-1"}>
-                          <CalendarClock className="size-3.5" aria-hidden /> {late ? "En retard — " : ""}
-                          {formatDate(t.due_on)}
-                        </span>
-                      ) : null}
-                      {t.assignee ? <span>· {displayName(t.assignee)}</span> : null}
-                    </span>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p className="px-5 pb-5 text-body text-ink-600">Aucune tâche ouverte.</p>
+            <p className="px-5 py-4 text-body text-ink-600">Aucune tâche ouverte.</p>
           )}
         </Card>
         </div>
