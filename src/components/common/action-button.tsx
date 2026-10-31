@@ -34,8 +34,8 @@ export function ActionButton({
   const run = async () => {
     const res = await action();
     if (res.ok && typeof res.data?.link === "string") {
+      // No refresh yet: it could remove this row, and the only copy of the link with it.
       setLinkResult({ message: res.message, link: res.data.link });
-      router.refresh();
     } else if (res.ok) {
       toast({ tone: "success", title: res.message ?? "Opération effectuée." });
       router.refresh();
@@ -48,7 +48,11 @@ export function ActionButton({
   const linkDialog = (
     <Dialog
       open={Boolean(linkResult)}
-      onOpenChange={(open) => !open && setLinkResult(null)}
+      onOpenChange={(open) => {
+        if (open) return;
+        setLinkResult(null);
+        router.refresh();
+      }}
       title="Lien d’invitation"
       description={linkResult?.message}
       size="md"

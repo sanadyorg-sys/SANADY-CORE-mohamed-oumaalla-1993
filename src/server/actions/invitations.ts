@@ -207,6 +207,8 @@ export async function reissueInvitation(invitationId: string): Promise<ActionSta
     token,
     institutionId: invitation.institution_id,
   });
+  // A link still to copy: revalidating would re-render the list and close its dialog. ActionButton refreshes on close.
+  if (result.data?.link) return result;
   revalidatePath("/admin/invitations");
   if (invitation.institution_id) revalidatePath(`/etablissement/${invitation.institution_id}/enseignants`);
   return result;
