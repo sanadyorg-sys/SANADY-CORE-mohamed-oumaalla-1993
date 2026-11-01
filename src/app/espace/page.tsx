@@ -430,10 +430,10 @@ function NextStepCard({ step, course, today }: { step: NextStep; course?: Learne
   const ratio = course && course.mandatory_lessons ? course.completed_lessons / course.mandatory_lessons : 0;
   return (
     <section aria-labelledby="prochaine-etape" className="group relative overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
-      <div className="grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)]">
-        <div className="relative hidden overflow-hidden md:block">
-          <CourseCover path={course?.cover_path ?? null} title={step.course_title} category={course?.category} className="h-full min-h-[200px]" imageClassName="transition-transform duration-500 group-hover:scale-[1.03]" />
-          <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-transparent to-brand-900/15" />
+      <div className="grid grid-cols-1 md:grid-cols-[320px_minmax(0,1fr)]">
+        {/* Same 16:9 as the cover: a taller frame would crop the title printed on it. */}
+        <div className="relative m-4 mr-0 hidden aspect-[16/9] self-start overflow-hidden rounded-lg ring-1 ring-line md:block">
+          <CourseCover path={course?.cover_path ?? null} title={step.course_title} category={course?.category} className="h-full" imageClassName="transition-transform duration-500 group-hover:scale-[1.03]" />
         </div>
         <div className="flex flex-col gap-5 p-6">
           <div className="min-w-0">

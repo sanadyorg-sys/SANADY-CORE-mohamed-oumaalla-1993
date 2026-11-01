@@ -242,12 +242,12 @@ export function ResumeCourseCard({ course }: { course: LearnerCourse }) {
   return (
     <article className="group relative overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-        <div className="relative aspect-[16/9] overflow-hidden md:aspect-auto md:h-full">
+        {/* Same 16:9 as the cover, play button in the corner: nothing hides the title printed on it. */}
+        <div className="relative aspect-[16/9] overflow-hidden md:m-4 md:mr-0 md:self-start md:rounded-lg md:ring-1 md:ring-line">
           <CourseCover path={course.cover_path} title={course.title} category={course.category} className="h-full" imageClassName="transition-transform duration-500 group-hover:scale-[1.03]" />
-          <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-transparent to-brand-900/20" />
-          <span className="absolute inset-0 flex items-center justify-center">
-            <span className="flex size-14 items-center justify-center rounded-full bg-white/95 text-accent-700 shadow-pop transition-transform duration-300 group-hover:scale-110">
-              <PlayCircle className="size-7" aria-hidden />
+          <span className="absolute inset-0 flex items-end justify-end p-3">
+            <span className="flex size-11 items-center justify-center rounded-full bg-white/95 text-accent-700 shadow-pop transition-transform duration-300 group-hover:scale-110">
+              <PlayCircle className="size-6" aria-hidden />
             </span>
           </span>
         </div>
