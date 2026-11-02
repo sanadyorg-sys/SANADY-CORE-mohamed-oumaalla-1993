@@ -233,7 +233,7 @@ export default async function TeacherDashboardPage() {
           </div>
 
             {/* Stacked under the main column, the side cards sit two by two. */}
-            <Reveal as="aside" from="stagger" className="grid content-start items-start gap-6 md:grid-cols-2 @5xl:grid-cols-1">
+            <Reveal as="aside" from="stagger" className="grid grid-cols-1 content-start items-start gap-6 md:grid-cols-2 @5xl:grid-cols-1">
               {deadlines.length ? (
                 <Card>
                   <CardHeader title="Échéances" description="À ne pas manquer" />
