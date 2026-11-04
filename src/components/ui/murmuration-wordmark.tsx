@@ -55,6 +55,8 @@ export interface MurmurationWordmarkProps {
    * Draws a custom scene along the bottom instead of the reeds, once per
    * resize, on the sky canvas (CSS pixels). Keep it a stable function.
    */
+  /** An image drawn as the whole sky (cover-fitted), over the gradient and ground. */
+  backdrop?: string
   ground?: (ctx: CanvasRenderingContext2D, w: number, h: number, colors: MurmurationPalette & { accent: string }) => void
   /** The pointer is a hawk the flock flees. Defaults to true. */
   interactive?: boolean
@@ -180,6 +182,7 @@ export default function MurmurationWordmark({
   holdFor = 3.2,
   reeds = true,
   ground,
+  backdrop,
   interactive = true,
   speed = 1,
   fontFamily = SANS_STACK,
@@ -197,7 +200,7 @@ export default function MurmurationWordmark({
   React.useEffect(() => {
     opts.current = { flyFor, holdFor, interactive, speed }
   }, [flyFor, holdFor, interactive, speed])
-  const key = [word, birds, colors.skyTop, colors.skyLow, colors.sun, colors.ink, reeds, fontFamily, accent, shape ? shape.points.length + ":" + shape.aspect : ""].join("|")
+  const key = [word, birds, colors.skyTop, colors.skyLow, colors.sun, colors.ink, reeds, fontFamily, accent, backdrop, shape ? shape.points.length + ":" + shape.aspect : ""].join("|")
 
   React.useEffect(() => {
     const root = rootRef.current
@@ -293,6 +296,16 @@ export default function MurmurationWordmark({
             }
           }
         }
+      }
+
+      // A supplied backdrop replaces the drawn sky once it has loaded.
+      const sc = sky.getContext("2d")
+      if (sc && bg && bg.complete && bg.naturalWidth > 0) {
+        const scale = Math.max(w / bg.naturalWidth, h / bg.naturalHeight)
+        const iw = bg.naturalWidth * scale
+        const ih = bg.naturalHeight * scale
+        sc.setTransform(dpr, 0, 0, dpr, 0, 0)
+        sc.drawImage(bg, (w - iw) / 2, (h - ih) / 2, iw, ih)
       }
 
       // The word, sampled into points on a 1x mask.
@@ -491,6 +504,13 @@ export default function MurmurationWordmark({
       hy = -1e5
     }
 
+    let bg = null as HTMLImageElement | null
+    if (backdrop) {
+      bg = new Image()
+      bg.decoding = "async"
+      bg.onload = () => layout()
+      bg.src = backdrop
+    }
     layout()
     raf = requestAnimationFrame(frame)
     root.addEventListener("pointermove", onMove)
@@ -509,6 +529,7 @@ export default function MurmurationWordmark({
     }
     return () => {
       alive = false
+      if (bg) bg.onload = null
       cancelAnimationFrame(raf)
       ro.disconnect()
       io.disconnect()
