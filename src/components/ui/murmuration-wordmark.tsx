@@ -51,6 +51,11 @@ export interface MurmurationWordmarkProps {
   holdFor?: number
   /** Show the reed line along the bottom. Defaults to true. */
   reeds?: boolean
+  /**
+   * Draws a custom scene along the bottom instead of the reeds, once per
+   * resize, on the sky canvas (CSS pixels). Keep it a stable function.
+   */
+  ground?: (ctx: CanvasRenderingContext2D, w: number, h: number, colors: MurmurationPalette & { accent: string }) => void
   /** The pointer is a hawk the flock flees. Defaults to true. */
   interactive?: boolean
   /** Flight speed: 1 is the original pace, lower is calmer. Defaults to 1. */
@@ -174,6 +179,7 @@ export default function MurmurationWordmark({
   flyFor = 7,
   holdFor = 3.2,
   reeds = true,
+  ground,
   interactive = true,
   speed = 1,
   fontFamily = SANS_STACK,
@@ -261,7 +267,11 @@ export default function MurmurationWordmark({
           s.fillStyle = gr() < 0.5 ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.035)"
           s.fillRect(gr() * w, gr() * h, 1, 1)
         }
-        if (reeds) {
+        if (ground) {
+          s.save()
+          ground(s, w, h, { ...colors, accent })
+          s.restore()
+        } else if (reeds) {
           // A reed bed along the bottom, stalks leaning with a wind.
           s.strokeStyle = colors.ink
           s.fillStyle = colors.ink
@@ -294,10 +304,10 @@ export default function MurmurationWordmark({
       const accentPts = [] as number[]
       if (shape && shape.points.length >= 2) {
         // A traced logo, fitted and centred where the word would sit.
-        const boxW = Math.min(w * 0.6, h * 0.62 * shape.aspect)
+        const boxW = Math.min(w * 0.6, h * 0.56 * shape.aspect)
         const boxH = boxW / shape.aspect
         const left = w / 2 - boxW / 2
-        const top = h * 0.45 - boxH / 2
+        const top = h * 0.4 - boxH / 2
         const total = shape.points.length / 2
         const accentFrom = shape.accentFrom ?? total
         const jitter = (boxW / Math.sqrt(total)) * 0.6

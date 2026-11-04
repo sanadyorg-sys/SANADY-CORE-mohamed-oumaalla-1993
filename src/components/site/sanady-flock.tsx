@@ -1,6 +1,7 @@
 "use client";
 
 import MurmurationWordmark from "@/components/ui/murmuration-wordmark";
+import { drawSchoolScene } from "./sanady-flock-scene";
 import { SANADY_SHAPE } from "./sanady-flock-shape";
 
 /**
@@ -18,6 +19,7 @@ export function SanadyFlock() {
       speed={0.45}
       flyFor={3.5}
       holdFor={2.6}
+      ground={drawSchoolScene}
       palette={{ skyTop: "#fcfbfa", skyLow: "#ffe6d5", sun: "#ffc9a8", ink: "#1a1715" }}
       height="clamp(18rem, 48vw, 30rem)"
     />
