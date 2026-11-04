@@ -22,7 +22,11 @@ export function SanadyFlock() {
       holdFor={2.6}
       backdrop="/brand/flock-backdrop.jpg"
       reeds={false}
-      palette={{ skyTop: "#fdf6ef", skyLow: "#fdf6ef", sun: "#fdf6ef", ink: "#1a1715" }}
+      bounds={{ top: 0.05, bottom: 0.62 }}
+      // Smaller, lighter birds and a smaller logo: the flock reads as far off.
+      birdScale={0.62}
+      logoWidth={0.5}
+      palette={{ skyTop: "#fde8d6", skyLow: "#fde8d6", sun: "#fde8d6", ink: "#3a302b" }}
       // Follows the illustration's 2.55:1 shape so phones keep its corners.
       height="clamp(8.5rem, calc((min(100vw, 80rem) - 2rem) / 2.55), 30rem)"
     />

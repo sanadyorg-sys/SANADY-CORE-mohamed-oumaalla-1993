@@ -62,12 +62,21 @@ export interface MurmurationWordmarkProps {
   interactive?: boolean
   /** Flight speed: 1 is the original pace, lower is calmer. Defaults to 1. */
   speed?: number
+  /**
+   * Band the free flock keeps to, as fractions of the height (e.g. stay above
+   * a drawn horizon). Defaults to { top: 0.03, bottom: 0.97 }.
+   */
+  bounds?: { top?: number; bottom?: number }
+  /** Bird size and stroke weight: below 1 reads as a flock further away. Defaults to 1. */
+  birdScale?: number
   /** Face the word is sampled from. Heavy weights form cleaner letters. */
   fontFamily?: string
   /** Form this traced shape instead of `word` (which stays the accessible name). */
   shape?: MurmurationShape
   /** Colour the shape's accent birds turn as they settle. */
   accent?: string
+  /** Widest the shape may be, as a share of the width. Defaults to 0.58. */
+  logoWidth?: number
   /** Content laid over the sky (a headline, a nav). */
   children?: React.ReactNode
   /** Root height. A definite length, never a percentage. */
@@ -185,9 +194,12 @@ export default function MurmurationWordmark({
   backdrop,
   interactive = true,
   speed = 1,
+  bounds,
+  birdScale = 1,
   fontFamily = SANS_STACK,
   shape,
   accent = "#e04e00",
+  logoWidth = 0.58,
   children,
   height = "100svh",
   className = "",
@@ -195,12 +207,14 @@ export default function MurmurationWordmark({
   const colors = { ...(PRESETS[preset] || PRESETS.dusk), ...(palette || {}) }
   const rootRef = React.useRef(null as HTMLDivElement | null)
   const canvasRef = React.useRef(null as HTMLCanvasElement | null)
-  const opts = React.useRef({ flyFor, holdFor, interactive, speed })
+  const boundTop = bounds?.top ?? 0.03
+  const boundBottom = bounds?.bottom ?? 0.97
+  const opts = React.useRef({ flyFor, holdFor, interactive, speed, boundTop, boundBottom, birdScale })
   // Synced after render (React forbids writing refs during render); the loop reads it each frame.
   React.useEffect(() => {
-    opts.current = { flyFor, holdFor, interactive, speed }
-  }, [flyFor, holdFor, interactive, speed])
-  const key = [word, birds, colors.skyTop, colors.skyLow, colors.sun, colors.ink, reeds, fontFamily, accent, backdrop, shape ? shape.points.length + ":" + shape.aspect : ""].join("|")
+    opts.current = { flyFor, holdFor, interactive, speed, boundTop, boundBottom, birdScale }
+  }, [flyFor, holdFor, interactive, speed, boundTop, boundBottom, birdScale])
+  const key = [word, birds, colors.skyTop, colors.skyLow, colors.sun, colors.ink, reeds, fontFamily, accent, backdrop, logoWidth, shape ? shape.points.length + ":" + shape.aspect : ""].join("|")
 
   React.useEffect(() => {
     const root = rootRef.current
@@ -224,6 +238,10 @@ export default function MurmurationWordmark({
     let vy = new Float32Array(0)
     let depth = new Float32Array(0)
     let phase = new Float32Array(0)
+    // Smoothed heading (so settled birds don't spin) and arrival order.
+    let dirX = new Float32Array(0)
+    let dirY = new Float32Array(0)
+    let delay = new Float32Array(0)
     let target = new Int32Array(0)
     let tx = new Float32Array(0)
     let ty = new Float32Array(0)
@@ -317,10 +335,10 @@ export default function MurmurationWordmark({
       const accentPts = [] as number[]
       if (shape && shape.points.length >= 2) {
         // A traced logo, fitted and centred where the word would sit.
-        const boxW = Math.min(w * 0.6, h * 0.56 * shape.aspect)
+        const boxW = Math.min(w * logoWidth, h * 0.9 * logoWidth * shape.aspect)
         const boxH = boxW / shape.aspect
         const left = w / 2 - boxW / 2
-        const top = h * 0.4 - boxH / 2
+        const top = h * 0.38 - boxH / 2
         const total = shape.points.length / 2
         const accentFrom = shape.accentFrom ?? total
         const jitter = (boxW / Math.sqrt(total)) * 0.6
@@ -362,6 +380,8 @@ export default function MurmurationWordmark({
         vy = new Float32Array(n)
         depth = new Float32Array(n)
         phase = new Float32Array(n)
+        dirX = new Float32Array(n).fill(1)
+        dirY = new Float32Array(n)
         for (let i = 0; i < n; i++) {
           const a = rand() * Math.PI * 2
           const r = Math.sqrt(rand())
@@ -374,6 +394,13 @@ export default function MurmurationWordmark({
       target = mmwAssign(n, tx.length, 23)
       kind = new Uint8Array(n)
       for (let i = 0; i < n; i++) kind[i] = target[i]! >= 0 ? tk[target[i]!]! : 0
+      // Birds settle in a sweep from left to right, loosely, and leave in the
+      // same order: a wave rather than everyone at once.
+      delay = new Float32Array(n)
+      for (let i = 0; i < n; i++) {
+        const ti = target[i]!
+        delay[i] = (ti >= 0 ? 0.55 * (tx[ti]! / w) : 0.3) + 0.3 * rand()
+      }
     }
 
     const frame = (now: number) => {
@@ -388,14 +415,30 @@ export default function MurmurationWordmark({
       const dt = reduced ? 0 : Math.min(0.05, (now - last) / 1000) * Math.max(0.1, o.speed)
       last = now
       clock += dt
-      const cycle = Math.max(1, o.flyFor) + 2.4 + Math.max(0.5, o.holdFor) + 0.6
-      const tc = clock % cycle
+      const FORM = 3.2
+      const RELEASE = 2.2
       const fly = Math.max(1, o.flyFor)
-      // 0 → 1 while forming, 1 while holding, back to 0 on release.
-      let pull = 0
-      if (tc > fly && tc <= fly + 2.4) pull = mmwEase((tc - fly) / 2.4)
-      else if (tc > fly + 2.4 && tc <= fly + 2.4 + o.holdFor) pull = 1
-      else if (tc > fly + 2.4 + o.holdFor) pull = 1 - mmwEase((tc - fly - 2.4 - o.holdFor) / 0.6)
+      const holdT = Math.max(0.5, o.holdFor)
+      const cycle = fly + FORM + holdT + RELEASE
+      const tc = clock % cycle
+      // Overall 0 → 1 while forming, 1 while holding, back to 0 on release;
+      // each bird follows it with its own delay (see `delay`).
+      let stage = 0 // 0 free, 1 forming, 2 holding, 3 releasing
+      let prog = 0
+      if (tc > fly && tc <= fly + FORM) {
+        stage = 1
+        prog = (tc - fly) / FORM
+      } else if (tc > fly + FORM && tc <= fly + FORM + holdT) {
+        stage = 2
+      } else if (tc > fly + FORM + holdT) {
+        stage = 3
+        prog = (tc - fly - FORM - holdT) / RELEASE
+      }
+      const pull = stage === 1 ? mmwEase(prog) : stage === 2 ? 1 : stage === 3 ? 1 - mmwEase(prog) : 0
+      const top = o.boundTop * h
+      const bottom = o.boundBottom * h
+      const edge = Math.min(w, h) * 0.06
+      const wobble = clock * 1.7
 
       const u = Math.min(w, h)
       const cen = mmwCentre(clock)
@@ -414,7 +457,10 @@ export default function MurmurationWordmark({
         const fx = (x - w / 2) / u
         const fy = (y - h / 2) / u
         const cv = mmwCurl(fx * 2.2 + depth[i]! * 0.25, fy * 2.2, t)
-        const free = 1 - pull
+        const d = delay[i]!
+        const p =
+          stage === 1 ? mmwEase(prog * 1.85 - d) : stage === 2 ? 1 : stage === 3 ? 1 - mmwEase(prog * 1.85 - d) : 0
+        const free = 1 - p
         ax += cv[0] * 420 * free
         ay += cv[1] * 420 * free
         const dxC = cxp - x
@@ -423,11 +469,19 @@ export default function MurmurationWordmark({
         const hold = dC < 0.14 ? 0.15 : 0.15 + (dC - 0.14) * 6
         ax += dxC * hold * 2.2 * free
         ay += dyC * hold * 1.6 * free
-        // Formation: spring to the bird's point in the word.
+        // Soft walls keep the free flock inside its band (above a horizon).
+        if (y < top + edge) ay += (top + edge - y) * 70 * free
+        else if (y > bottom - edge) ay -= (y - bottom + edge) * 70 * free
+        if (x < edge) ax += (edge - x) * 30 * free
+        else if (x > w - edge) ax -= (x - w + edge) * 30 * free
+        // Formation: a critically damped spring to the bird's point, which
+        // drifts a pixel or so while held so the word breathes.
         const ti = target[i]!
-        if (pull > 0 && ti >= 0) {
-          ax += (tx[ti]! - x) * 9 * pull - vx[i]! * 3.2 * pull
-          ay += (ty[ti]! - y) * 9 * pull - vy[i]! * 3.2 * pull
+        if (p > 0 && ti >= 0) {
+          const gx = tx[ti]! + Math.sin(wobble + i * 0.61) * 1.1
+          const gy = ty[ti]! + Math.cos(wobble * 0.8 + i * 0.37) * 0.9
+          ax += ((gx - x) * 16 - vx[i]! * 8) * p
+          ay += ((gy - y) * 16 - vy[i]! * 8) * p
         }
         // The hawk: a hard shove away inside its radius.
         if (hawk) {
@@ -444,7 +498,7 @@ export default function MurmurationWordmark({
         let nvx = (vx[i]! + ax * dt) * (1 - 1.1 * dt)
         let nvy = (vy[i]! + ay * dt) * (1 - 1.1 * dt)
         const sp = Math.hypot(nvx, nvy)
-        const cap = 520 + 380 * pull
+        const cap = 520 + 380 * p
         if (sp > cap) {
           nvx = (nvx / sp) * cap
           nvy = (nvy / sp) * cap
@@ -453,7 +507,17 @@ export default function MurmurationWordmark({
         vy[i] = nvy
         px[i] = x + nvx * dt
         py[i] = y + nvy * dt
-        phase[i] = phase[i]! + dt * (9 + sp * 0.02)
+        // Heading eases towards the flight direction; wings beat slower as a
+        // bird settles and glides.
+        if (sp > 12) {
+          const k = Math.min(1, dt * 7)
+          const hxn = dirX[i]! + (nvx / sp - dirX[i]!) * k
+          const hyn = dirY[i]! + (nvy / sp - dirY[i]!) * k
+          const hl = Math.hypot(hxn, hyn) || 1
+          dirX[i] = hxn / hl
+          dirY[i] = hyn / hl
+        }
+        phase[i] = phase[i]! + dt * (6 + sp * 0.018) * (1 - 0.55 * p)
       }
 
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -470,10 +534,9 @@ export default function MurmurationWordmark({
           if (kind[i] !== group) continue
           const near = depth[i]! > 0.78
           if (front !== near) continue
-          const s = (1.6 + depth[i]! * 2.2) * (1 - 0.35 * pull)
-          const sp = Math.hypot(vx[i]!, vy[i]!) + 0.001
-          const dx = vx[i]! / sp
-          const dy = vy[i]! / sp
+          const s = (1.6 + depth[i]! * 2.2) * (1 - 0.35 * pull) * o.birdScale
+          const dx = dirX[i]!
+          const dy = dirY[i]!
           const flap = 0.55 + 0.45 * Math.sin(phase[i]!)
           const bx = px[i]!
           const by = py[i]!
@@ -488,7 +551,7 @@ export default function MurmurationWordmark({
         }
         ctx.strokeStyle = group === 1 ? accentInk : colors.ink
         ctx.globalAlpha = front ? 0.92 : 0.55 + 0.37 * pull * group
-        ctx.lineWidth = front ? 1.25 + 0.35 * pull * group : 0.9
+        ctx.lineWidth = (front ? 1.25 + 0.35 * pull * group : 0.9) * Math.max(0.6, o.birdScale)
         ctx.stroke()
       }
       ctx.globalAlpha = 1
