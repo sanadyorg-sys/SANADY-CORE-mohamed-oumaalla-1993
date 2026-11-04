@@ -26,10 +26,10 @@ import { FoundationSection } from "@/components/site/foundation-section";
 import { HomeHero, type HeroFigure } from "@/components/site/home-hero";
 import { PartnerTrustBanner } from "@/components/site/partner-trust-banner";
 import { PlatformShowcase } from "@/components/site/platform-showcase";
+import { SanadyFlock } from "@/components/site/sanady-flock";
 import { TestimonialsSection } from "@/components/site/testimonials-section";
 import { VideoSpotlight } from "@/components/site/video-spotlight";
 import { buttonClasses } from "@/components/ui/button";
-import MurmurationWordmark from "@/components/ui/murmuration-wordmark";
 import { Reveal } from "@/components/ui/motion";
 import { getViewer } from "@/server/auth";
 import { getCatalog } from "@/server/queries/public";
@@ -110,14 +110,9 @@ export default async function HomePage() {
             Chacun avance à son rythme, <Highlight>tous progressent ensemble</Highlight>.
           </p>
         </Reveal>
-        {/* Sanady palette: cream sky, soft orange glow, near-black birds. */}
+        {/* Sanady palette: cream sky, soft orange glow, near-black birds; orange eyes and smile. */}
         <Reveal from="zoom" className="mt-8 overflow-hidden rounded-[2rem] ring-1 ring-line">
-          <MurmurationWordmark
-            word="SANADY"
-            birds={2800}
-            palette={{ skyTop: "#fcfbfa", skyLow: "#ffe6d5", sun: "#ffc9a8", ink: "#1a1715" }}
-            height="clamp(18rem, 48vw, 30rem)"
-          />
+          <SanadyFlock />
         </Reveal>
       </section>
 
