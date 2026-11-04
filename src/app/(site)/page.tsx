@@ -29,6 +29,7 @@ import { PlatformShowcase } from "@/components/site/platform-showcase";
 import { TestimonialsSection } from "@/components/site/testimonials-section";
 import { VideoSpotlight } from "@/components/site/video-spotlight";
 import { buttonClasses } from "@/components/ui/button";
+import MurmurationWordmark from "@/components/ui/murmuration-wordmark";
 import { Reveal } from "@/components/ui/motion";
 import { getViewer } from "@/server/auth";
 import { getCatalog } from "@/server/queries/public";
@@ -100,6 +101,25 @@ export default async function HomePage() {
       <HomeHero categories={catalog.categories} courseTitle={featured[0]?.title ?? "Évaluation formative en classe"} figures={FIGURES} />
 
       {SHOW_PARTNERS ? <PartnerTrustBanner /> : null}
+
+      {/* ─── Murmuration: the flock gathers into « SANADY », then scatters ── */}
+      <section aria-label="SANADY" className="mx-auto max-w-7xl px-4 pt-16 sm:px-6 lg:px-8 lg:pt-24">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <Eyebrow>Ensemble</Eyebrow>
+          <p className="mt-3 text-[1.875rem] font-extrabold leading-tight tracking-tight text-ink-900 sm:text-[2.5rem]">
+            Chacun avance à son rythme, <Highlight>tous progressent ensemble</Highlight>.
+          </p>
+        </Reveal>
+        {/* Sanady palette: cream sky, soft orange glow, near-black birds. */}
+        <Reveal from="zoom" className="mt-8 overflow-hidden rounded-[2rem] ring-1 ring-line">
+          <MurmurationWordmark
+            word="SANADY"
+            birds={2800}
+            palette={{ skyTop: "#fcfbfa", skyLow: "#ffe6d5", sun: "#ffc9a8", ink: "#1a1715" }}
+            height="clamp(18rem, 48vw, 30rem)"
+          />
+        </Reveal>
+      </section>
 
       {/* ─── Featured courses ─────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 pb-6 pt-16 sm:px-6 lg:px-8 lg:pt-24">
