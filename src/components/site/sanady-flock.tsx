@@ -17,9 +17,9 @@ export function SanadyFlock() {
       shape={SANADY_SHAPE}
       accent="#e04e00"
       birds={14000}
-      speed={0.33}
-      flyFor={2.8}
-      holdFor={2.1}
+      speed={0.24}
+      flyFor={2.2}
+      holdFor={1.6}
       backdrop="/brand/flock-backdrop.jpg"
       reeds={false}
       bounds={{ top: 0.05, bottom: 0.62 }}
