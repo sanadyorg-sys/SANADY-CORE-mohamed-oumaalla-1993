@@ -30,8 +30,6 @@ const MUTED = COLORS.muted;
 const PAPER = rgb(1, 1, 1);
 const COLUMN = rgb(0.955, 0.945, 0.93);
 const FRAME = rgb(0.11, 0.1, 0.09);
-const GUILLOCHE = rgb(0.985, 0.9, 0.85);
-const LAUREL = rgb(0.62, 0.59, 0.56);
 
 type Fonts = { serif: PDFFont; serifRegular: PDFFont; serifItalic: PDFFont; sans: PDFFont; sansBold: PDFFont };
 
@@ -110,7 +108,7 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
   };
   const fact = (value: string, label: string, y: number) => {
     centre(value, y, 15, fonts.sansBold);
-    page.drawLine({ start: { x: colX + 30, y: y - 9 }, end: { x: colX + colW - 30, y: y - 9 }, thickness: 0.7, color: LAUREL });
+    page.drawLine({ start: { x: colX + 30, y: y - 9 }, end: { x: colX + colW - 30, y: y - 9 }, thickness: 0.7, color: rgb(0.72, 0.69, 0.66) });
     centre(label, y - 23, 8.5, fonts.sans, MUTED);
   };
   fact(pdfDuration(data.durationMinutes), "Durée de la formation", 172);
@@ -198,25 +196,70 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
   return pdf.save();
 }
 
-/** The medallion on the ribbon: laurels around an orange zellige star. */
-function drawMedallion(page: PDFPage, fonts: Fonts, cx: number, cy: number, data: CertificateData) {
-  page.drawCircle({ x: cx, y: cy, size: 62, color: PAPER, borderColor: ORANGE, borderWidth: 3 });
-  page.drawCircle({ x: cx, y: cy, size: 55, borderColor: rgb(1, 0.86, 0.76), borderWidth: 0.8 });
+/** Linear blend between two colours. */
+function mix(a: RGB, b: RGB, t: number): RGB {
+  const k = Math.max(0, Math.min(1, t));
+  return rgb(a.red + (b.red - a.red) * k, a.green + (b.green - a.green) * k, a.blue + (b.blue - a.blue) * k);
+}
 
-  // Laurel branches: leaves along two arcs, open at the top.
+const SILVER_DARK = rgb(0.46, 0.47, 0.5);
+const SILVER_MID = rgb(0.72, 0.73, 0.76);
+const SILVER_LIGHT = rgb(0.97, 0.97, 0.98);
+
+/**
+ * A metal disc: stacked circles shading from the rim to a highlight up and to
+ * the left, the way light falls on a polished medal.
+ */
+function metalDisc(page: PDFPage, cx: number, cy: number, r: number, from: RGB, to: RGB, steps = 36) {
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const eased = t * t * (3 - 2 * t);
+    page.drawCircle({
+      x: cx - r * 0.22 * t,
+      y: cy + r * 0.22 * t,
+      size: r * (1 - t * 0.78),
+      color: mix(from, to, eased),
+    });
+  }
+}
+
+/** The medallion on the ribbon: a silver medal with a reeded edge, laurels and the star. */
+function drawMedallion(page: PDFPage, fonts: Fonts, cx: number, cy: number, data: CertificateData) {
+  // A soft shadow under the medal.
+  page.drawCircle({ x: cx + 2, y: cy - 3, size: 63, color: rgb(0, 0, 0), opacity: 0.12 });
+
+  // Reeded rim: a dark ring with fine ridges, then a bevel.
+  page.drawCircle({ x: cx, y: cy, size: 62, color: SILVER_DARK });
+  for (let i = 0; i < 132; i++) {
+    const a = (Math.PI * 2 * i) / 132;
+    // Ridges catch the light on the upper left.
+    const light = 0.5 + 0.5 * Math.cos(a - (Math.PI * 3) / 4);
+    page.drawLine({
+      start: { x: cx + Math.cos(a) * 57.5, y: cy + Math.sin(a) * 57.5 },
+      end: { x: cx + Math.cos(a) * 61.5, y: cy + Math.sin(a) * 61.5 },
+      thickness: 0.9,
+      color: mix(SILVER_MID, SILVER_LIGHT, light),
+    });
+  }
+  metalDisc(page, cx, cy, 57, SILVER_DARK, SILVER_LIGHT, 18);
+  // The field: brushed silver, slightly recessed (darker edge, light centre).
+  metalDisc(page, cx, cy, 52, SILVER_MID, rgb(0.99, 0.99, 1), 40);
+  page.drawCircle({ x: cx, y: cy, size: 52, borderColor: SILVER_DARK, borderWidth: 0.6, opacity: 0.6 });
+
+  // Laurels in relief: each leaf has a dark shadow and a light edge.
   for (const side of [-1, 1]) {
-    // The stem.
     const stem: string[] = [];
     for (let i = 0; i <= 20; i++) {
       const a = -Math.PI / 2 + side * (0.3 + i * 0.12);
-      stem.push(`${(Math.cos(a) * 45).toFixed(2)} ${(-Math.sin(a) * 45).toFixed(2)}`);
+      stem.push(`${(Math.cos(a) * 44).toFixed(2)} ${(-Math.sin(a) * 44).toFixed(2)}`);
     }
-    page.drawSvgPath(`M ${stem.join(" L ")}`, { x: cx, y: cy, borderColor: LAUREL, borderWidth: 0.9 });
+    page.drawSvgPath(`M ${stem.join(" L ")}`, { x: cx + 0.6, y: cy - 0.6, borderColor: SILVER_DARK, borderWidth: 1.1 });
+    page.drawSvgPath(`M ${stem.join(" L ")}`, { x: cx, y: cy, borderColor: SILVER_LIGHT, borderWidth: 0.5 });
     for (let i = 0; i < 11; i++) {
       // Angle in PDF space (y up): start near the bottom, climb each side.
       const a = -Math.PI / 2 + side * (0.34 + i * 0.215);
-      const lx = cx + Math.cos(a) * 45;
-      const ly = cy + Math.sin(a) * 45;
+      const lx = cx + Math.cos(a) * 44;
+      const ly = cy + Math.sin(a) * 44;
       // Each leaf points up along the branch, tilted outwards.
       const tilt = a + side * (Math.PI / 2) - side * 0.45;
       const len = 10.5 - i * 0.35;
@@ -225,15 +268,20 @@ function drawMedallion(page: PDFPage, fonts: Fonts, cx: number, cy: number, data
       const nx = -dy * 0.38;
       const ny = dx * 0.38;
       // SVG paths are drawn with y pointing down: flip the y components.
-      page.drawSvgPath(
-        `M 0 0 Q ${(dx / 2 + nx).toFixed(2)} ${(-(dy / 2 + ny)).toFixed(2)} ${dx.toFixed(2)} ${(-dy).toFixed(2)} Q ${(dx / 2 - nx).toFixed(2)} ${(-(dy / 2 - ny)).toFixed(2)} 0 0 Z`,
-        { x: lx, y: ly, color: LAUREL },
-      );
+      const leaf = `M 0 0 Q ${(dx / 2 + nx).toFixed(2)} ${(-(dy / 2 + ny)).toFixed(2)} ${dx.toFixed(2)} ${(-dy).toFixed(2)} Q ${(dx / 2 - nx).toFixed(2)} ${(-(dy / 2 - ny)).toFixed(2)} 0 0 Z`;
+      page.drawSvgPath(leaf, { x: lx + 0.7, y: ly - 0.7, color: SILVER_DARK });
+      page.drawSvgPath(leaf, { x: lx, y: ly, color: mix(SILVER_MID, SILVER_LIGHT, 0.35), borderColor: SILVER_LIGHT, borderWidth: 0.35 });
     }
   }
 
-  page.drawSvgPath(starPath(34, 26), { x: cx, y: cy, color: ORANGE });
-  page.drawCircle({ x: cx, y: cy, size: 21, color: PAPER });
+  // The star, in Sanady orange, set into the silver with a metal bezel.
+  const star = starPath(33, 25);
+  page.drawSvgPath(star, { x: cx + 0.8, y: cy - 0.8, color: SILVER_DARK });
+  page.drawSvgPath(star, { x: cx, y: cy, color: ORANGE, borderColor: SILVER_LIGHT, borderWidth: 0.8 });
+  // A lighter facet on the upper half of the star.
+  page.drawSvgPath(starPath(30, 22.5), { x: cx - 0.6, y: cy + 0.6, color: rgb(1, 0.55, 0.3), opacity: 0.35 });
+  metalDisc(page, cx, cy, 21, SILVER_MID, rgb(1, 1, 1), 24);
+  page.drawCircle({ x: cx, y: cy, size: 21, borderColor: SILVER_DARK, borderWidth: 0.5 });
   const line = (value: string, dy: number, size: number, font: PDFFont, color: RGB) => {
     const safe = pdfSafe(value);
     page.drawText(safe, { x: cx - font.widthOfTextAtSize(safe, size) / 2, y: cy + dy, size, font, color });
@@ -242,22 +290,39 @@ function drawMedallion(page: PDFPage, fonts: Fonts, cx: number, cy: number, data
   line(String(new Date(data.issuedAt).getUTCFullYear()), -10, 5.5, fonts.sansBold, ORANGE_TEXT);
 }
 
-/** A fine guilloche: interlaced waves, very light, across the sheet. */
+/**
+ * A guilloche in relief: two twisting ribbons, each drawn as a fan of fine
+ * waves whose phase slips line after line, so the band seems to turn in
+ * space. Lines darken towards the band's edges, like shading on a fold.
+ */
 function drawGuilloche(page: PDFPage, x: number, y: number, w: number, h: number) {
-  const steps = 80;
-  for (let k = 0; k < 22; k++) {
-    const amp = h * (0.12 + (k % 5) * 0.025);
-    const base = h * (0.18 + k * 0.03);
-    const freq = 1.6 + (k % 3) * 0.35;
-    const phase = k * 0.55;
-    const pts: string[] = [];
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const py = base + Math.sin(t * Math.PI * freq + phase) * amp * (0.6 + 0.4 * Math.sin(t * Math.PI));
-      // Measured from the bottom of the sheet, kept inside it.
-      const up = Math.max(4, Math.min(h - 4, py));
-      pts.push(`${(t * w).toFixed(1)} ${(h - up).toFixed(1)}`);
+  const steps = 110;
+  const bands = [
+    { base: 0.62, amp: 0.2, freq: 1.25, phase: 0.3, width: 0.16, lines: 34 },
+    { base: 0.3, amp: 0.16, freq: 1.7, phase: 2.1, width: 0.12, lines: 28 },
+  ];
+  for (const b of bands) {
+    for (let k = 0; k < b.lines; k++) {
+      const u = k / (b.lines - 1); // across the band, 0 → 1
+      // The twist: each line's offset follows a cosine, so lines bunch at the
+      // folds and spread on the faces.
+      const pts: string[] = [];
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const twist = Math.cos(t * Math.PI * 2.2 + b.phase + u * Math.PI);
+        const centre = b.base + Math.sin(t * Math.PI * b.freq + b.phase) * b.amp;
+        const py = (centre + (u - 0.5) * b.width * twist) * h;
+        const up = Math.max(4, Math.min(h - 4, py));
+        pts.push(`${(t * w).toFixed(1)} ${(h - up).toFixed(1)}`);
+      }
+      // Shading: darker lines at the band's edges, lightest in the middle.
+      const edge = Math.abs(u - 0.5) * 2;
+      page.drawSvgPath(`M ${pts.join(" L ")}`, {
+        x,
+        y: y + h,
+        borderColor: mix(rgb(0.998, 0.96, 0.935), rgb(0.97, 0.84, 0.76), edge),
+        borderWidth: 0.3 + edge * 0.15,
+      });
     }
-    page.drawSvgPath(`M ${pts.join(" L ")}`, { x, y: y + h, borderColor: GUILLOCHE, borderWidth: 0.45 });
   }
 }
