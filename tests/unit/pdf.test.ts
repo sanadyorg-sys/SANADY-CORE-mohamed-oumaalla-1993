@@ -38,7 +38,9 @@ describe("certificate PDF", () => {
     expect(numPages).toBe(1);
     expect(text).toContain("Khadija El Amrani");
     expect(text).toContain("SND-2026-4F7A21C9");
-    expect(text).toContain("CERTIFICAT DE FIN DE FORMATION");
+    expect(text).toContain("Certificat");
+    expect(text).toContain("de fin de formation");
+    expect(text).toContain("Vérifier ce certificat");
     expect(text).toContain("Évaluation formative");
     expect(text).toContain("4 h 30");
     expect(text).toContain("sanady.example.org/verifier/");

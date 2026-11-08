@@ -1,6 +1,6 @@
-import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import QRCode from "qrcode";
-import { BRAND_LOGO_PNG_BASE64 } from "./brand-logo";
+import { BRAND_LOGO_LIGHT_PNG_BASE64 } from "./brand-logo-light";
 import { COLORS, pdfDate, pdfDuration, pdfSafe, wrapText } from "./common";
 
 export interface CertificateData {
@@ -22,18 +22,41 @@ export interface CertificateData {
   organizationLogo?: { bytes: Uint8Array; type: "png" | "jpg" } | null;
 }
 
+// Sanady palette: near-black and orange, warm neutrals. No gold.
+const INK = COLORS.brand;
+const ORANGE = COLORS.accent;
+const ORANGE_TEXT = COLORS.accentText;
+const MUTED = COLORS.muted;
+const LINE = COLORS.line;
+const PAPER = rgb(1, 0.996, 0.99);
+const BAND = rgb(0.09, 0.08, 0.07);
+const BAND_PATTERN = rgb(0.16, 0.145, 0.13);
+const ON_BAND_MUTED = rgb(0.72, 0.69, 0.66);
+
+/** An eight-pointed star (the zellige motif) as an SVG path centred on 0,0. */
+function starPath(outer: number, inner: number) {
+  const pts: string[] = [];
+  for (let i = 0; i < 16; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = (Math.PI / 8) * i - Math.PI / 2;
+    pts.push(`${(Math.cos(a) * r).toFixed(2)} ${(Math.sin(a) * r).toFixed(2)}`);
+  }
+  return `M ${pts.join(" L ")} Z`;
+}
+
+function checkPath(size: number) {
+  return `M 0 ${size * 0.55} L ${size * 0.38} ${size * 0.9} L ${size} ${size * 0.1}`;
+}
+
 /**
- * Printable A4 landscape certificate with academic prestige styling and verification QR code.
- * Features:
- * - Subtle ivory parchment background with multi-tier gold and charcoal borders
- * - Classical serif typography (Times-Roman) paired with crisp modern sans-serif (Helvetica)
- * - Vector corner filigree ornaments and background guilloche security watermark
- * - Vector gold/orange official security rosette seal
- * - Pedagogical validation statement complying with non-regulated training disclosure.
+ * Printable A4 landscape certificate in the Fondation Sanady style: a dark
+ * band on the left (light logo, zellige pattern, seal and verification QR
+ * code) and an editorial main area (title, recipient, course, facts,
+ * signature). Deterministic: the same certificate always yields the same file.
  */
 export async function renderCertificatePdf(data: CertificateData): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
-  pdf.setTitle(pdfSafe(`Certificat ${data.certificateNumber}`));
+  pdf.setTitle(pdfSafe(`${data.kind === "attestation" ? "Attestation" : "Certificat"} ${data.certificateNumber}`));
   pdf.setAuthor(pdfSafe(data.issuerName));
   pdf.setSubject(pdfSafe(data.courseTitle));
   pdf.setCreator("Fondation Sanady");
@@ -42,461 +65,181 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
 
   const page = pdf.addPage([841.89, 595.28]); // A4 landscape
   const { width, height } = page.getSize();
-
-  // Typography: Classical academic serif + crisp sans-serif metadata
-  const timesBold = await pdf.embedFont(StandardFonts.TimesRomanBold);
-  const timesItalic = await pdf.embedFont(StandardFonts.TimesRomanItalic);
-  const helvetica = await pdf.embedFont(StandardFonts.Helvetica);
-  const helveticaBold = await pdf.embedFont(StandardFonts.HelveticaBold);
-
-  // Harmonious bespoke color palette for certificate
-  const parchment = rgb(0.996, 0.993, 0.988);
-  const parchmentInner = rgb(1, 1, 1);
-  const charcoal = rgb(0.11, 0.10, 0.09); // #1C1917
-  const gold = rgb(0.85, 0.58, 0.15); // #D97706
-  const goldLight = rgb(0.99, 0.96, 0.91); // #FEF3C7
-  const orange = rgb(0.976, 0.353, 0.02); // #F95A05
-  const orangeDark = rgb(0.722, 0.247, 0.0); // #B83F00
-  const warmBorder = rgb(0.89, 0.86, 0.82); // #E3E0DB
-  const softMuted = rgb(0.43, 0.41, 0.38); // #6E6962
-
-  const center = (text: string, y: number, size: number, font = helvetica, color = COLORS.ink) => {
-    const safe = pdfSafe(text);
-    const textWidth = font.widthOfTextAtSize(safe, size);
-    page.drawText(safe, { x: (width - textWidth) / 2, y, size, font, color });
+  const fonts = {
+    serif: await pdf.embedFont(StandardFonts.TimesRomanBold),
+    serifItalic: await pdf.embedFont(StandardFonts.TimesRomanItalic),
+    sans: await pdf.embedFont(StandardFonts.Helvetica),
+    sansBold: await pdf.embedFont(StandardFonts.HelveticaBold),
   };
+  const attestation = data.kind === "attestation";
 
-  // 1. Canvas Background
-  page.drawRectangle({ x: 0, y: 0, width, height, color: parchment });
+  page.drawRectangle({ x: 0, y: 0, width, height, color: PAPER });
 
-  // 2. Multi-tier Classical Diploma Frame
-  // Outer Charcoal Border
-  page.drawRectangle({
-    x: 18,
-    y: 18,
-    width: width - 36,
-    height: height - 36,
-    borderColor: charcoal,
-    borderWidth: 2,
-    color: parchment,
-  });
+  const bandWidth = 232;
+  await drawBand(pdf, page, fonts, data, { bandWidth, height, attestation });
 
-  // Intermediate Hairline
-  page.drawRectangle({
-    x: 23,
-    y: 23,
-    width: width - 46,
-    height: height - 46,
-    borderColor: warmBorder,
-    borderWidth: 0.6,
-  });
+  // ─── Main area ─────────────────────────────────────────────────────────
+  const left = bandWidth + 58;
+  const right = width - 58;
+  const content = right - left;
+  const text = (value: string, x: number, y: number, size: number, font: PDFFont, color = INK) =>
+    page.drawText(pdfSafe(value), { x, y, size, font, color });
 
-  // Inner Orange/Gold Filigree Border
-  page.drawRectangle({
-    x: 27,
-    y: 27,
-    width: width - 54,
-    height: height - 54,
-    borderColor: orange,
-    borderWidth: 1.2,
-    color: parchmentInner,
-  });
+  // A hairline frame around the main area.
+  page.drawRectangle({ x: bandWidth + 22, y: 20, width: width - bandWidth - 42, height: height - 40, borderColor: LINE, borderWidth: 0.6 });
 
-  // Secondary Inset Guide
-  page.drawRectangle({
-    x: 32,
-    y: 32,
-    width: width - 64,
-    height: height - 64,
-    borderColor: rgb(0.94, 0.91, 0.86),
-    borderWidth: 0.5,
-  });
+  text("DÉVELOPPEMENT PROFESSIONNEL DES ENSEIGNANTS", left, height - 80, 7.5, fonts.sansBold, ORANGE_TEXT);
 
-  // 3. Classical Corner Quadrant Ornaments (TL, TR, BL, BR)
-  const drawCornerFlourish = (cx: number, cy: number, dx: number, dy: number) => {
-    // Nested square corner ornaments
-    page.drawRectangle({
-      x: cx - 5,
-      y: cy - 5,
-      width: 10,
-      height: 10,
-      color: charcoal,
-    });
-    page.drawRectangle({
-      x: cx - 2.5,
-      y: cy - 2.5,
-      width: 5,
-      height: 5,
-      color: orange,
-    });
-    // Horizontal pinstripe extension
-    page.drawLine({
-      start: { x: cx + dx * 8, y: cy },
-      end: { x: cx + dx * 34, y: cy },
-      thickness: 1,
-      color: gold,
-    });
-    // Vertical pinstripe extension
-    page.drawLine({
-      start: { x: cx, y: cy + dy * 8 },
-      end: { x: cx, y: cy + dy * 34 },
-      thickness: 1,
-      color: gold,
-    });
-  };
-
-  drawCornerFlourish(27, height - 27, 1, -1); // Top-Left
-  drawCornerFlourish(width - 27, height - 27, -1, -1); // Top-Right
-  drawCornerFlourish(27, 27, 1, 1); // Bottom-Left
-  drawCornerFlourish(width - 27, 27, -1, 1); // Bottom-Right
-
-  // 4. Subtle Background Security Watermark (Guilloche Rosette)
-  const watermarkCenter = { x: width / 2, y: height / 2 - 14 };
-  const watermarkRings = [190, 145, 105, 68];
-  for (const radius of watermarkRings) {
-    page.drawCircle({
-      x: watermarkCenter.x,
-      y: watermarkCenter.y,
-      size: radius,
-      borderColor: rgb(0.965, 0.955, 0.94),
-      borderWidth: 0.5,
-    });
-  }
-
-  // 5. Official Fondation Sanady Logo (Centered, Scaled with Perfect Proportions)
-  const logo = await pdf.embedPng(Buffer.from(BRAND_LOGO_PNG_BASE64, "base64"));
-  const logoHeight = 46;
-  const logoWidth = (logo.width / logo.height) * logoHeight;
-  page.drawImage(logo, {
-    x: (width - logoWidth) / 2,
-    y: height - 90,
-    width: logoWidth,
-    height: logoHeight,
-  });
-
-  // Company logo (co-branding), top left inside the frame; the Foundation logo stays centred.
+  // Co-branding: the company's logo, top right of the main area.
   if (data.organizationLogo) {
     try {
       const img = data.organizationLogo.type === "png" ? await pdf.embedPng(data.organizationLogo.bytes) : await pdf.embedJpg(data.organizationLogo.bytes);
-      const scale = Math.min(120 / img.width, 44 / img.height);
-      page.drawImage(img, { x: 72, y: height - 50 - img.height * scale, width: img.width * scale, height: img.height * scale });
+      const scale = Math.min(110 / img.width, 40 / img.height);
+      page.drawImage(img, { x: right - img.width * scale, y: height - 52 - img.height * scale, width: img.width * scale, height: img.height * scale });
     } catch {
       // An unreadable logo never blocks the document.
     }
   }
 
-  // Institution Sub-header
-  const headerSubtitle = "DÉVELOPPEMENT PROFESSIONNEL DES ENSEIGNANTS • PLATEFORME SANADY";
-  center(headerSubtitle, height - 105, 7.5, helveticaBold, softMuted);
+  // Title.
+  text(attestation ? "Attestation" : "Certificat", left, height - 138, 54, fonts.serif);
+  text(attestation ? "de formation" : "de fin de formation", left, height - 168, 22, fonts.serifItalic, MUTED);
+  page.drawRectangle({ x: left, y: height - 190, width: 44, height: 3, color: ORANGE });
 
-  // Decorative Rule with Center Diamond
-  const dividerY = height - 118;
-  page.drawLine({
-    start: { x: width / 2 - 140, y: dividerY },
-    end: { x: width / 2 - 16, y: dividerY },
-    thickness: 0.8,
-    color: gold,
-  });
-  page.drawLine({
-    start: { x: width / 2 + 16, y: dividerY },
-    end: { x: width / 2 + 140, y: dividerY },
-    thickness: 0.8,
-    color: gold,
-  });
-  // Center Diamond
-  page.drawRectangle({
-    x: width / 2 - 3.5,
-    y: dividerY - 3.5,
-    width: 7,
-    height: 7,
-    rotate: degrees(45),
-    color: orange,
-  });
+  // Recipient.
+  text(attestation ? "DÉLIVRÉE À" : "DÉCERNÉ À", left, height - 222, 7.5, fonts.sansBold, MUTED);
+  const name = pdfSafe(data.recipientName);
+  let nameSize = 34;
+  while (nameSize > 20 && fonts.serif.widthOfTextAtSize(name, nameSize) > content) nameSize -= 1;
+  text(name, left, height - 258, nameSize, fonts.serif);
 
-  // 6. Main Diploma Title
-  const attestation = data.kind === "attestation";
-  center(attestation ? "ATTESTATION DE FORMATION" : "CERTIFICAT DE FIN DE FORMATION", height - 156, 24, timesBold, charcoal);
-
-  // Title underline accent
-  page.drawLine({
-    start: { x: width / 2 - 50, y: height - 168 },
-    end: { x: width / 2 + 50, y: height - 168 },
-    thickness: 1.4,
-    color: orange,
-  });
-
-  // 7. Recipient Lead-in & Name
-  center(attestation ? "Cette attestation est délivrée à" : "Ce certificat est décerné à", height - 200, 11.5, timesItalic, softMuted);
-
-  const recipientName = data.recipientName;
-  const nameSafe = pdfSafe(recipientName);
-  let nameSize = 28;
-  if (timesBold.widthOfTextAtSize(nameSafe, nameSize) > width - 240) {
-    nameSize = 22;
+  // Course.
+  let y = height - 290;
+  text("pour avoir suivi avec succès l’intégralité de la formation", left, y, 12, fonts.serifItalic, MUTED);
+  y -= 26;
+  const titleLines = wrapText(data.courseTitle, fonts.sansBold, 16, content).slice(0, 3);
+  for (const line of titleLines) {
+    text(line, left, y, 16, fonts.sansBold);
+    y -= 21;
   }
-  center(recipientName, height - 236, nameSize, timesBold, charcoal);
+  text("et réussi l’évaluation de chacun de ses modules.", left, y - 4, 12, fonts.serifItalic, MUTED);
 
-  // Elegant decorative underline flourish below recipient name
-  const nameWidth = Math.min(320, timesBold.widthOfTextAtSize(nameSafe, nameSize) + 40);
-  page.drawLine({
-    start: { x: (width - nameWidth) / 2, y: height - 248 },
-    end: { x: (width + nameWidth) / 2, y: height - 248 },
-    thickness: 0.7,
-    color: gold,
-  });
-
-  // 8. Course Narrative & Achievement Statement
-  center("pour avoir suivi avec succès l’intégralité de la formation", height - 272, 11, timesItalic, softMuted);
-
-  const titleLines = wrapText(`« ${data.courseTitle} »`, timesBold, 17, width - 220).slice(0, 2);
-  titleLines.forEach((line, i) => {
-    center(line, height - 298 - i * 22, 17, timesBold, orangeDark);
-  });
-  const afterTitleY = height - 298 - (titleLines.length - 1) * 22;
-
-  center(
-    "et réussi l’évaluation de chacun de ses modules (70 % de bonnes réponses au minimum).",
-    afterTitleY - 24,
-    10,
-    timesItalic,
-    softMuted,
-  );
-
-  // 9. Verified Facts & Academic Record Card
-  const cardY = 136;
-  const cardHeight = 44;
-  const cardX = 72;
-  const cardWidth = width - 144;
-
-  // Crisp background panel for credentials
-  page.drawRectangle({
-    x: cardX,
-    y: cardY,
-    width: cardWidth,
-    height: cardHeight,
-    color: rgb(0.985, 0.98, 0.97),
-    borderColor: warmBorder,
-    borderWidth: 0.7,
-  });
-
-  const facts: Array<{ label: string; value: string; isBold?: boolean }> = [
-    { label: "DATE D’ACHÈVEMENT", value: pdfDate(data.completedAt) },
-    { label: "DURÉE", value: pdfDuration(data.durationMinutes) },
-    { label: "NUMÉRO DE CERTIFICAT", value: data.certificateNumber, isBold: true },
-    { label: "STATUT", value: "FORMATION VALIDÉE", isBold: true },
+  // Facts.
+  const factsTop = 172;
+  page.drawLine({ start: { x: left, y: factsTop }, end: { x: right, y: factsTop }, thickness: 0.6, color: LINE });
+  const facts: Array<[string, string, boolean]> = [
+    ["DATE D’ACHÈVEMENT", pdfDate(data.completedAt), false],
+    ["DURÉE", pdfDuration(data.durationMinutes), false],
+    [attestation ? "N° D’ATTESTATION" : "N° DE CERTIFICAT", data.certificateNumber, true],
   ];
+  const col = content / facts.length;
+  facts.forEach(([label, value, bold], i) => {
+    const x = left + i * col;
+    text(label, x, factsTop - 20, 6.5, fonts.sansBold, MUTED);
+    text(value, x, factsTop - 36, 11, bold ? fonts.sansBold : fonts.sans);
+  });
 
-  const colWidth = cardWidth / facts.length;
-  facts.forEach((fact, i) => {
-    const colX = cardX + i * colWidth + 14;
-    page.drawText(pdfSafe(fact.label), {
-      x: colX,
-      y: cardY + 26,
-      size: 7,
-      font: helveticaBold,
-      color: i === 3 ? orangeDark : softMuted,
-    });
-    page.drawText(pdfSafe(fact.value), {
-      x: colX,
-      y: cardY + 11,
-      size: 10,
-      font: fact.isBold ? helveticaBold : helvetica,
-      color: i === 3 ? COLORS.success : charcoal,
-    });
+  // Signature.
+  const sigY = 86;
+  page.drawLine({ start: { x: left, y: sigY + 16 }, end: { x: left + 200, y: sigY + 16 }, thickness: 0.8, color: INK });
+  text(data.signatoryName || data.issuerName, left, sigY, 11, fonts.serif);
+  text(data.signatoryTitle || "Fondation Sanady", left, sigY - 13, 8, fonts.sans, MUTED);
+  text(`${attestation ? "Délivrée" : "Délivré"} le ${pdfDate(data.issuedAt)}`, left, sigY - 25, 7.5, fonts.sans, MUTED);
 
-    if (i > 0) {
-      page.drawLine({
-        start: { x: cardX + i * colWidth, y: cardY + 7 },
-        end: { x: cardX + i * colWidth, y: cardY + cardHeight - 7 },
-        thickness: 0.5,
-        color: warmBorder,
-      });
+  // Status pill, bottom right.
+  const pillLabel = "Formation validée";
+  const pillW = fonts.sansBold.widthOfTextAtSize(pillLabel, 9) + 40;
+  const pillX = right - pillW;
+  page.drawRectangle({ x: pillX, y: sigY - 2, width: pillW, height: 24, color: COLORS.accentLight, borderColor: rgb(1, 0.85, 0.74), borderWidth: 0.6 });
+  page.drawSvgPath(checkPath(9), { x: pillX + 12, y: sigY + 15, borderColor: ORANGE_TEXT, borderWidth: 1.6 });
+  text(pillLabel, pillX + 28, sigY + 6.5, 9, fonts.sansBold, ORANGE_TEXT);
+
+  // Disclaimer.
+  const host = data.verificationUrl.replace(/^https?:\/\//, "");
+  wrapText(
+    `${attestation ? "Cette attestation" : "Ce certificat"} atteste le suivi complet d’une formation sur la plateforme SANADY${data.organization ? ` (espace ${data.organization})` : ""} et la réussite de ses évaluations. Il ne constitue ni un diplôme ni une certification professionnelle réglementée. Vérification en ligne : ${host}`,
+    fonts.sans,
+    6,
+    content,
+  )
+    .slice(0, 3)
+    .forEach((line, i) => text(line, left, 42 - i * 8, 6, fonts.sans, rgb(0.55, 0.53, 0.5)));
+
+  return pdf.save();
+}
+
+/** The dark left band: logo, zellige pattern, seal and the verification QR code. */
+async function drawBand(
+  pdf: PDFDocument,
+  page: PDFPage,
+  fonts: { sans: PDFFont; sansBold: PDFFont },
+  data: CertificateData,
+  o: { bandWidth: number; height: number; attestation: boolean },
+) {
+  const { bandWidth: bw, height } = o;
+  page.drawRectangle({ x: 0, y: 0, width: bw, height, color: BAND });
+
+  // Zellige: a lattice of eight-pointed stars, barely lighter than the band.
+  const star = starPath(15, 9);
+  const step = 46;
+  for (let row = 0; row * step < height + step; row++) {
+    for (let c = 0; c * step < bw + step; c++) {
+      const cx = c * step + (row % 2 ? step / 2 : 0);
+      page.drawSvgPath(star, { x: cx, y: height - row * step, borderColor: BAND_PATTERN, borderWidth: 0.7 });
     }
-  });
+  }
+  // The lattice runs past the band's edge: cover the overflow with paper.
+  const { width } = page.getSize();
+  page.drawRectangle({ x: bw, y: -4, width: width - bw + 4, height: height + 8, color: PAPER });
+  // Fade the pattern out behind the logo, seal and code.
+  for (const [y0, h] of [[height - 150, 130], [height / 2 - 70, 140], [26, 170]] as const) {
+    page.drawRectangle({ x: 24, y: y0, width: bw - 48, height: h, color: BAND, opacity: 0.92 });
+  }
+  page.drawRectangle({ x: bw, y: 0, width: 4, height, color: ORANGE });
 
-  // 10. Bottom Section: Tri-part Balance
-  // Left: Official Signatory
-  const sigX = 72;
-  const sigY = 74;
+  const centre = (value: string, y: number, size: number, font: PDFFont, color = rgb(1, 1, 1)) => {
+    const safe = pdfSafe(value);
+    page.drawText(safe, { x: (bw - font.widthOfTextAtSize(safe, size)) / 2, y, size, font, color });
+  };
 
-  // Signatory simulated flourish line
-  page.drawLine({
-    start: { x: sigX, y: sigY + 18 },
-    end: { x: sigX + 210, y: sigY + 18 },
-    thickness: 0.8,
-    color: charcoal,
-  });
-  page.drawText(pdfSafe(data.signatoryName || data.issuerName), {
-    x: sigX,
-    y: sigY + 4,
-    size: 10.5,
-    font: timesBold,
-    color: charcoal,
-  });
-  page.drawText(pdfSafe(data.signatoryTitle || "Organisme émetteur — Fondation Sanady"), {
-    x: sigX,
-    y: sigY - 10,
-    size: 8,
-    font: helvetica,
-    color: softMuted,
-  });
-  page.drawText(pdfSafe(`Délivré le ${pdfDate(data.issuedAt)}`), {
-    x: sigX,
-    y: sigY - 21,
-    size: 7.5,
-    font: helvetica,
-    color: softMuted,
-  });
+  // Light logo.
+  const logo = await pdf.embedPng(Buffer.from(BRAND_LOGO_LIGHT_PNG_BASE64, "base64"));
+  const lw = 150;
+  const lh = (logo.height / logo.width) * lw;
+  page.drawImage(logo, { x: (bw - lw) / 2, y: height - 56 - lh, width: lw, height: lh });
+  centre("Plateforme de formation", height - 76 - lh, 8, fonts.sans, ON_BAND_MUTED);
+  centre("des enseignants", height - 87 - lh, 8, fonts.sans, ON_BAND_MUTED);
 
-  // Center: Official Security Rosette Medallion
-  const sealCenter = { x: width / 2, y: 78 };
-  // Outer decorative circle
-  page.drawCircle({
-    x: sealCenter.x,
-    y: sealCenter.y,
-    size: 34,
-    color: goldLight,
-    borderColor: gold,
-    borderWidth: 1.5,
-  });
-  // Inner ring
-  page.drawCircle({
-    x: sealCenter.x,
-    y: sealCenter.y,
-    size: 27,
-    borderColor: orange,
-    borderWidth: 0.7,
-  });
-  // Central disc
-  page.drawCircle({
-    x: sealCenter.x,
-    y: sealCenter.y,
-    size: 21,
-    color: rgb(1, 1, 1),
-    borderColor: gold,
-    borderWidth: 0.5,
-  });
+  // Seal: an orange zellige star around a white disc.
+  const sx = bw / 2;
+  const sy = height / 2;
+  page.drawSvgPath(starPath(52, 40), { x: sx, y: sy, color: ORANGE });
+  page.drawCircle({ x: sx, y: sy, size: 31, color: rgb(1, 1, 1) });
+  page.drawCircle({ x: sx, y: sy, size: 27, borderColor: ORANGE, borderWidth: 0.6 });
+  const sealLine = (value: string, dy: number, size: number, font: PDFFont, color: ReturnType<typeof rgb>) => {
+    const safe = pdfSafe(value);
+    page.drawText(safe, { x: sx - font.widthOfTextAtSize(safe, size) / 2, y: sy + dy, size, font, color });
+  };
+  sealLine("FONDATION", 8, 5.2, fonts.sansBold, MUTED);
+  sealLine("SANADY", -2, 9.5, fonts.sansBold, INK);
+  sealLine(String(new Date(data.issuedAt).getUTCFullYear()), -12, 6, fonts.sansBold, ORANGE_TEXT);
 
-  // Medallion micro-text & star
-  const sealTopText = "FONDATION SANADY";
-  const sealTopWidth = helveticaBold.widthOfTextAtSize(sealTopText, 4.5);
-  page.drawText(sealTopText, {
-    x: sealCenter.x - sealTopWidth / 2,
-    y: sealCenter.y + 10,
-    size: 4.5,
-    font: helveticaBold,
-    color: softMuted,
-  });
-
-  const sealMidText = attestation ? "ATTESTATION" : "CERTIFICAT";
-  const sealMidWidth = helveticaBold.widthOfTextAtSize(sealMidText, 5.5);
-  page.drawText(sealMidText, {
-    x: sealCenter.x - sealMidWidth / 2,
-    y: sealCenter.y - 1,
-    size: 5.5,
-    font: helveticaBold,
-    color: orangeDark,
-  });
-
-  const sealBotText = "VÉRIFIABLE";
-  const sealBotWidth = helveticaBold.widthOfTextAtSize(sealBotText, 4.5);
-  page.drawText(sealBotText, {
-    x: sealCenter.x - sealBotWidth / 2,
-    y: sealCenter.y - 10,
-    size: 4.5,
-    font: helveticaBold,
-    color: COLORS.success,
-  });
-
-  // Right: Cryptographic QR Code Verification Card
-  const qrBoxWidth = 140;
-  const qrBoxHeight = 84;
-  const qrBoxX = width - 72 - qrBoxWidth;
-  const qrBoxY = 46;
-
-  // Clean QR card background
-  page.drawRectangle({
-    x: qrBoxX,
-    y: qrBoxY,
-    width: qrBoxWidth,
-    height: qrBoxHeight,
-    color: rgb(1, 1, 1),
-    borderColor: warmBorder,
-    borderWidth: 0.6,
-  });
-
-  // Generate crisp QR code
-  const qrSize = 58;
-  const qrPng = await QRCode.toBuffer(data.verificationUrl, {
-    errorCorrectionLevel: "M",
-    margin: 1,
-    width: 260,
-    color: { dark: "#1C1917", light: "#FFFFFF" },
-  });
+  // Verification QR code on a white tile.
+  const qrPng = await QRCode.toBuffer(data.verificationUrl, { errorCorrectionLevel: "M", margin: 1, width: 300, color: { dark: "#1C1917", light: "#FFFFFF" } });
   const qr = await pdf.embedPng(qrPng);
-  page.drawImage(qr, {
-    x: qrBoxX + 8,
-    y: qrBoxY + 13,
-    width: qrSize,
-    height: qrSize,
-  });
-
-  // QR Side Text
-  const qrTextX = qrBoxX + qrSize + 14;
-  page.drawText(pdfSafe("VÉRIFICATION"), {
-    x: qrTextX,
-    y: qrBoxY + 54,
-    size: 6.5,
-    font: helveticaBold,
-    color: orangeDark,
-  });
-  page.drawText(pdfSafe("Scan QR Code"), {
-    x: qrTextX,
-    y: qrBoxY + 43,
-    size: 6.5,
-    font: helvetica,
-    color: softMuted,
-  });
-  page.drawText(pdfSafe("pour vérifier"), {
-    x: qrTextX,
-    y: qrBoxY + 34,
-    size: 6.5,
-    font: helvetica,
-    color: softMuted,
-  });
-  page.drawText(pdfSafe("l'authenticité."), {
-    x: qrTextX,
-    y: qrBoxY + 25,
-    size: 6.5,
-    font: helvetica,
-    color: softMuted,
-  });
-
-  const urlDomain = (() => {
+  const tile = 88;
+  const tx = (bw - tile) / 2;
+  const ty = 82;
+  page.drawRectangle({ x: tx, y: ty, width: tile, height: tile, color: rgb(1, 1, 1) });
+  page.drawImage(qr, { x: tx + 5, y: ty + 5, width: tile - 10, height: tile - 10 });
+  centre(o.attestation ? "Vérifier cette attestation" : "Vérifier ce certificat", 62, 8, fonts.sansBold);
+  centre("Scannez le code ou rendez-vous sur", 50, 6.5, fonts.sans, ON_BAND_MUTED);
+  const host = (() => {
     try {
       return `${new URL(data.verificationUrl).host}/verifier`;
     } catch {
-      return "verifier";
+      return "la page de vérification";
     }
   })();
-  page.drawText(pdfSafe(urlDomain), {
-    x: qrBoxX + 8,
-    y: qrBoxY + 4,
-    size: 5.5,
-    font: helvetica,
-    color: softMuted,
-  });
-
-  // 11. Regulatory & Pedagogical Disclaimer
-  wrapText(
-    `${attestation ? "Cette attestation" : "Ce certificat"} atteste le suivi complet d’une formation sur la plateforme SANADY${data.organization ? ` (espace ${data.organization})` : ""} et la réussite de ses évaluations. Il ne constitue ni un diplôme ni une certification professionnelle réglementée. Vérification en ligne : ${data.verificationUrl.replace(/^https?:\/\//, "")}`,
-    helvetica,
-    5.8,
-    width - 190,
-  ).forEach((line, i) => {
-    // Inside the frame, below the signature, seal and QR blocks.
-    center(line, 38 - i * 7, 5.8, helvetica, rgb(0.55, 0.53, 0.50));
-  });
-
-  return pdf.save();
+  centre(host, 40, 6.5, fonts.sans, ON_BAND_MUTED);
 }
