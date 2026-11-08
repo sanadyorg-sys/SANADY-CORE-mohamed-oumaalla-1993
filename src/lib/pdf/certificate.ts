@@ -22,17 +22,18 @@ export interface CertificateData {
   organizationLogo?: { bytes: Uint8Array; type: "png" | "jpg" } | null;
 }
 
-// Black and gold, with the Sanady logo in its own orange.
+// The logo's colours: near-black and Sanady orange, the orange worked as a metal.
 const INK = COLORS.brand;
 const MUTED = COLORS.muted;
 const PAPER = rgb(1, 1, 1);
 const BLACK = rgb(0.075, 0.07, 0.065);
 const BLACK_SOFT = rgb(0.16, 0.15, 0.14);
-const GOLD_DARK = rgb(0.54, 0.35, 0.07);
-const GOLD = rgb(0.79, 0.55, 0.17);
-const GOLD_LIGHT = rgb(0.96, 0.83, 0.52);
-const GOLD_SHINE = rgb(1, 0.95, 0.8);
-const GOLD_TEXT = rgb(0.5, 0.33, 0.05);
+// Orange metal, from shadow to shine around the logo orange (#F95A05).
+const METAL_DARK = rgb(0.6, 0.2, 0.0);
+const METAL = COLORS.accent;
+const METAL_LIGHT = rgb(1, 0.62, 0.38);
+const METAL_SHINE = rgb(1, 0.86, 0.76);
+const METAL_TEXT = COLORS.accentText;
 
 type Fonts = { serif: PDFFont; serifRegular: PDFFont; serifItalic: PDFFont; sans: PDFFont; sansBold: PDFFont };
 
@@ -42,10 +43,10 @@ function mix(a: RGB, b: RGB, t: number): RGB {
   return rgb(a.red + (b.red - a.red) * k, a.green + (b.green - a.green) * k, a.blue + (b.blue - a.blue) * k);
 }
 
-/** Gold as lit from the upper left: `angle` is the surface's facing, in radians. */
-function goldAt(angle: number) {
+/** Orange metal as lit from the upper left: `angle` is the surface's facing, in radians. */
+function metalAt(angle: number) {
   const light = 0.5 + 0.5 * Math.cos(angle - (Math.PI * 3) / 4);
-  return light > 0.5 ? mix(GOLD, GOLD_LIGHT, (light - 0.5) * 2) : mix(GOLD_DARK, GOLD, light * 2);
+  return light > 0.5 ? mix(METAL, METAL_LIGHT, (light - 0.5) * 2) : mix(METAL_DARK, METAL, light * 2);
 }
 
 /** A disc shading from `from` at the rim to `to` in a highlight up and to the left. */
@@ -58,10 +59,10 @@ function shadedDisc(page: PDFPage, cx: number, cy: number, r: number, from: RGB,
 }
 
 /**
- * Printable A4 landscape certificate in black and gold: a black frame with a
- * gold filet; on the left a black column with a gold rosette and ribbons, the
- * duration and the date; on the right a white sheet with a gold guilloche in
- * relief, the Foundation logo, the recipient and course, the verification QR
+ * Printable A4 landscape certificate in the logo's black and orange: a black
+ * frame with an orange filet; on the left a black column with an orange-metal
+ * rosette and ribbons, the duration and the date; on the right a white sheet
+ * with an orange guilloche in relief, the Foundation logo, the recipient and course, the verification QR
  * code and the signature. Deterministic: the same certificate always yields
  * the same file.
  */
@@ -91,10 +92,10 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
     page.drawText(safe, { x: x - font.widthOfTextAtSize(safe, size), y, size, font, color });
   };
 
-  // Frame: black border with a double gold filet, then the sheet.
+  // Frame: black border with a double orange filet, then the sheet.
   page.drawRectangle({ x: 0, y: 0, width, height, color: BLACK });
-  page.drawRectangle({ x: 7, y: 7, width: width - 14, height: height - 14, borderColor: GOLD, borderWidth: 1.4 });
-  page.drawRectangle({ x: 10.5, y: 10.5, width: width - 21, height: height - 21, borderColor: GOLD_DARK, borderWidth: 0.5 });
+  page.drawRectangle({ x: 7, y: 7, width: width - 14, height: height - 14, borderColor: METAL, borderWidth: 1.4 });
+  page.drawRectangle({ x: 10.5, y: 10.5, width: width - 21, height: height - 21, borderColor: METAL_DARK, borderWidth: 0.5 });
   const inset = 16;
   const top = height - inset;
   const bottom = inset;
@@ -105,11 +106,11 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
   const colX = inset;
   const colCx = colX + colW / 2;
   page.drawRectangle({ x: colX, y: bottom, width: colW, height: top - bottom, color: BLACK });
-  // A faint pool of light behind the rosette, and a gold edge on the column.
+  // A faint pool of light behind the rosette, and a orange edge on the column.
   for (let i = 0; i < 14; i++) {
     page.drawCircle({ x: colCx, y: top - 150, size: 100 - i * 6, color: BLACK_SOFT, opacity: 0.1 });
   }
-  page.drawRectangle({ x: colX + colW - 2, y: bottom, width: 2, height: top - bottom, color: GOLD });
+  page.drawRectangle({ x: colX + colW - 2, y: bottom, width: 2, height: top - bottom, color: METAL });
 
   drawRosette(page, fonts, colCx, top - 150, data);
 
@@ -119,8 +120,8 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
   };
   const fact = (value: string, label: string, y: number) => {
     centre(value, y, 15, fonts.sansBold, PAPER);
-    page.drawLine({ start: { x: colX + 34, y: y - 9 }, end: { x: colX + colW - 34, y: y - 9 }, thickness: 0.7, color: GOLD });
-    centre(label, y - 23, 8, fonts.sans, GOLD_LIGHT);
+    page.drawLine({ start: { x: colX + 34, y: y - 9 }, end: { x: colX + colW - 34, y: y - 9 }, thickness: 0.7, color: METAL });
+    centre(label, y - 23, 8, fonts.sans, METAL_LIGHT);
   };
   fact(pdfDuration(data.durationMinutes), "Durée de la formation", 168);
   fact(pdfDate(data.completedAt), "Date d’obtention", 88);
@@ -137,7 +138,7 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
   const lh = 46;
   const lw = (logo.width / logo.height) * lh;
   page.drawImage(logo, { x: left, y: top - 40 - lh, width: lw, height: lh });
-  text("DÉVELOPPEMENT PROFESSIONNEL DES ENSEIGNANTS", left, top - 102, 7.5, fonts.sansBold, GOLD_TEXT);
+  text("DÉVELOPPEMENT PROFESSIONNEL DES ENSEIGNANTS", left, top - 102, 7.5, fonts.sansBold, METAL_TEXT);
   if (data.organizationLogo) {
     try {
       const img = data.organizationLogo.type === "png" ? await pdf.embedPng(data.organizationLogo.bytes) : await pdf.embedJpg(data.organizationLogo.bytes);
@@ -158,9 +159,9 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
   let nameSize = 27;
   while (nameSize > 16 && fonts.sansBold.widthOfTextAtSize(name, nameSize) > content) nameSize -= 1;
   text(name, left, y, nameSize, fonts.sansBold);
-  // A gold rule with a diamond, under the name.
-  page.drawLine({ start: { x: left, y: y - 13 }, end: { x: left + 120, y: y - 13 }, thickness: 1, color: GOLD });
-  page.drawSvgPath("M 0 -3.5 L 3.5 0 L 0 3.5 L -3.5 0 Z", { x: left + 124, y: y - 13, color: GOLD });
+  // A orange rule with a diamond, under the name.
+  page.drawLine({ start: { x: left, y: y - 13 }, end: { x: left + 120, y: y - 13 }, thickness: 1, color: METAL });
+  page.drawSvgPath("M 0 -3.5 L 3.5 0 L 0 3.5 L -3.5 0 Z", { x: left + 124, y: y - 13, color: METAL });
 
   y -= 46;
   for (const line of wrapText(
@@ -185,14 +186,14 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
   const qrPng = await QRCode.toBuffer(data.verificationUrl, { errorCorrectionLevel: "M", margin: 0, width: 300, color: { dark: "#1C1917", light: "#FFFFFF" } });
   page.drawImage(await pdf.embedPng(qrPng), { x: left, y: qrY, width: qrSize, height: qrSize });
   text(data.certificateNumber, left, qrY - 12, 8, fonts.sansBold);
-  text(data.verificationUrl.replace(/^https?:\/\//, ""), left, qrY - 23, 7.5, fonts.sans, GOLD_TEXT);
+  text(data.verificationUrl.replace(/^https?:\/\//, ""), left, qrY - 23, 7.5, fonts.sans, METAL_TEXT);
 
   // Signature, bottom right. Without a named signatory, the issuer signs.
   const signer = data.signatoryName || data.issuerName;
   const role = data.signatoryName ? data.signatoryTitle || data.issuerName : "Organisme émetteur";
   const sigY = bottom + 84;
   rightText(signer, right, sigY + 8, 19, fonts.serifItalic);
-  page.drawLine({ start: { x: right - 190, y: sigY }, end: { x: right, y: sigY }, thickness: 0.8, color: GOLD });
+  page.drawLine({ start: { x: right - 190, y: sigY }, end: { x: right, y: sigY }, thickness: 0.8, color: METAL });
   rightText(role, right, sigY - 13, 8.5, fonts.sansBold);
   rightText(`${attestation ? "Délivrée" : "Délivré"} le ${pdfDate(data.issuedAt)}`, right, sigY - 25, 7.5, fonts.sans, MUTED);
 
@@ -209,7 +210,7 @@ export async function renderCertificatePdf(data: CertificateData): Promise<Uint8
   return pdf.save();
 }
 
-/** One ribbon tail: black with gold edges and a V-cut end. `lean` tilts it outwards. */
+/** One ribbon tail: black with orange edges and a V-cut end. `lean` tilts it outwards. */
 function ribbonTail(page: PDFPage, x: number, y: number, lean: number) {
   const w = 34;
   const len = 120;
@@ -225,14 +226,14 @@ function ribbonTail(page: PDFPage, x: number, y: number, lean: number) {
   const path = (inset: number) =>
     `M ${pts
       .map(([px, py], i) => {
-        // Pull the shape in for the black body inside the gold edge.
+        // Pull the shape in for the black body inside the orange edge.
         const ix = i === 0 || i === 4 ? inset : i === 1 || i === 2 ? -inset : 0;
         const iy = i === 2 || i === 4 ? -inset * 1.6 : i === 3 ? -inset * 1.2 : 0;
         return `${(px + ix).toFixed(2)} ${(py + iy).toFixed(2)}`;
       })
       .join(" L ")} Z`;
   page.drawSvgPath(path(0), { x: x + 1.5, y: y - 2, color: rgb(0, 0, 0), opacity: 0.35 });
-  page.drawSvgPath(path(0), { x, y, color: GOLD });
+  page.drawSvgPath(path(0), { x, y, color: METAL });
   page.drawSvgPath(path(2.2), { x, y, color: BLACK });
   // A soft fold of light down the middle of the tail.
   page.drawSvgPath(`M ${w * 0.42} 4 L ${w * 0.58} 4 L ${w * 0.58 + lean} ${len - notch - 6} L ${w * 0.42 + lean} ${len - notch - 6} Z`, {
@@ -244,9 +245,9 @@ function ribbonTail(page: PDFPage, x: number, y: number, lean: number) {
 }
 
 /**
- * The award rosette: two ribbon tails, a serrated gold seal lit from the upper
- * left, a black ring, a polished gold ring, and a black centre carrying the
- * Foundation's name and the year in gold.
+ * The award rosette: two ribbon tails, a serrated orange-metal seal lit from the upper
+ * left, a black ring, a polished orange-metal ring, and a black centre carrying the
+ * Foundation's name and the year in orange.
  */
 function drawRosette(page: PDFPage, fonts: Fonts, cx: number, cy: number, data: CertificateData) {
   // Tails first, behind the seal.
@@ -268,16 +269,16 @@ function drawRosette(page: PDFPage, fonts: Fonts, cx: number, cy: number, data: 
       const rb = to === a1 ? rOut : rIn;
       page.drawSvgPath(
         `M 0 0 L ${(Math.cos(from) * ra).toFixed(2)} ${(-Math.sin(from) * ra).toFixed(2)} L ${(Math.cos(to) * rb).toFixed(2)} ${(-Math.sin(to) * rb).toFixed(2)} Z`,
-        { x: cx, y: cy, color: goldAt(a1 + shade * 2) },
+        { x: cx, y: cy, color: metalAt(a1 + shade * 2) },
       );
     }
   }
   // The seal's face and its rim.
-  shadedDisc(page, cx, cy, 61, GOLD_DARK, GOLD_LIGHT, 20, 0.5);
+  shadedDisc(page, cx, cy, 61, METAL_DARK, METAL_LIGHT, 20, 0.5);
 
-  // Black ring, polished gold ring, black ring, black centre.
+  // Black ring, polished orange-metal ring, black ring, black centre.
   page.drawCircle({ x: cx, y: cy, size: 55, color: BLACK });
-  shadedDisc(page, cx, cy, 51, GOLD_DARK, GOLD_SHINE, 26, 0.6);
+  shadedDisc(page, cx, cy, 51, METAL_DARK, METAL_SHINE, 26, 0.6);
   // The ring's shine runs round it: lighter on the upper left.
   for (let i = 0; i < 72; i++) {
     const a = (Math.PI * 2 * i) / 72;
@@ -285,31 +286,31 @@ function drawRosette(page: PDFPage, fonts: Fonts, cx: number, cy: number, data: 
       start: { x: cx + Math.cos(a) * 44.5, y: cy + Math.sin(a) * 44.5 },
       end: { x: cx + Math.cos(a) * 50.5, y: cy + Math.sin(a) * 50.5 },
       thickness: 4.6,
-      color: goldAt(a),
+      color: metalAt(a),
     });
   }
   page.drawCircle({ x: cx, y: cy, size: 44, color: BLACK });
   shadedDisc(page, cx, cy, 41, BLACK, rgb(0.24, 0.23, 0.22), 26, 0.85);
 
-  // Centre: a gold eight-pointed star, the name and the year.
+  // Centre: a orange eight-pointed star, the name and the year.
   const star: string[] = [];
   for (let i = 0; i < 16; i++) {
     const r = i % 2 === 0 ? 7 : 3.6;
     const a = (Math.PI / 8) * i - Math.PI / 2;
     star.push(`${(Math.cos(a) * r).toFixed(2)} ${(Math.sin(a) * r).toFixed(2)}`);
   }
-  page.drawSvgPath(`M ${star.join(" L ")} Z`, { x: cx, y: cy + 17, color: GOLD_LIGHT });
+  page.drawSvgPath(`M ${star.join(" L ")} Z`, { x: cx, y: cy + 17, color: METAL_LIGHT });
   const line = (value: string, dy: number, size: number, font: PDFFont, color: RGB) => {
     const safe = pdfSafe(value);
     page.drawText(safe, { x: cx - font.widthOfTextAtSize(safe, size) / 2, y: cy + dy, size, font, color });
   };
-  line("SANADY", -3, 11, fonts.serif, GOLD_LIGHT);
-  page.drawLine({ start: { x: cx - 16, y: cy - 8 }, end: { x: cx + 16, y: cy - 8 }, thickness: 0.5, color: GOLD });
-  line(String(new Date(data.issuedAt).getUTCFullYear()), -18, 7.5, fonts.sansBold, GOLD);
+  line("SANADY", -3, 11, fonts.serif, METAL_LIGHT);
+  page.drawLine({ start: { x: cx - 16, y: cy - 8 }, end: { x: cx + 16, y: cy - 8 }, thickness: 0.5, color: METAL });
+  line(String(new Date(data.issuedAt).getUTCFullYear()), -18, 7.5, fonts.sansBold, METAL);
 }
 
 /**
- * A gold guilloche in relief: two twisting ribbons, each drawn as a fan of
+ * A orange guilloche in relief: two twisting ribbons, each drawn as a fan of
  * fine waves whose phase slips line after line, so the band seems to turn in
  * space. Lines darken towards the band's edges, like shading on a fold.
  */
@@ -336,7 +337,7 @@ function drawGuilloche(page: PDFPage, x: number, y: number, w: number, h: number
       page.drawSvgPath(`M ${pts.join(" L ")}`, {
         x,
         y: y + h,
-        borderColor: mix(rgb(0.995, 0.975, 0.92), rgb(0.9, 0.79, 0.55), edge),
+        borderColor: mix(rgb(1, 0.97, 0.95), rgb(0.98, 0.78, 0.66), edge),
         borderWidth: 0.3 + edge * 0.15,
       });
     }
