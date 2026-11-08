@@ -226,6 +226,15 @@ export interface AttemptListItem {
   course: { title: string } | null;
 }
 
+/**
+ * Hands out a due second set of attempts (seven minutes after the last failed
+ * one, once per evaluation) before the learner's pages read their progress.
+ */
+export async function releaseDueAttempts(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.rpc("release_due_quiz_attempts");
+}
+
 export async function getAttempts(userId: string, courseId?: string): Promise<AttemptListItem[]> {
   const supabase = await createClient();
   let query = supabase

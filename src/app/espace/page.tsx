@@ -31,6 +31,7 @@ import {
   getLearnerCourses,
   getNextSteps,
   getRecentActivity,
+  releaseDueAttempts,
   type LearnerCourse,
   type NextStep,
 } from "@/server/queries/learning";
@@ -72,6 +73,7 @@ const STEP_LABEL: Record<NextStep["step_kind"], string> = {
 
 export default async function TeacherDashboardPage() {
   const viewer = await requireViewer();
+  await releaseDueAttempts();
   const [courses, steps, activity, certificates, attempts] = await Promise.all([
     getLearnerCourses(),
     getNextSteps(),

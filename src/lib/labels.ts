@@ -100,6 +100,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   update: "Modification",
   delete: "Suppression",
   quiz_attempts_reset: "Réinitialisation des tentatives",
+  quiz_attempts_auto_released: "Nouvelles tentatives attribuées automatiquement (7 min)",
   user_suspended: "Suspension du compte",
   user_reactivated: "Réactivation du compte",
   mfa_reset: "Réinitialisation de la double authentification",

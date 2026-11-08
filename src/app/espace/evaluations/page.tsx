@@ -8,12 +8,13 @@ import { Badge, Card } from "@/components/ui/surface";
 import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/table";
 import { formatDateTime, formatScore } from "@/lib/format";
 import { requireViewer } from "@/server/auth";
-import { getAttempts } from "@/server/queries/learning";
+import { getAttempts, releaseDueAttempts } from "@/server/queries/learning";
 
 export const metadata: Metadata = { title: "Mes évaluations" };
 
 export default async function MyAssessmentsPage() {
   const viewer = await requireViewer();
+  await releaseDueAttempts();
   const attempts = await getAttempts(viewer.id);
   const counted = attempts.filter((a) => a.status === "submitted" && !a.voided_at);
   const modulesPassed = new Set(counted.filter((a) => a.passed).map((a) => a.quiz_id)).size;

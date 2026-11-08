@@ -11,13 +11,14 @@ import { formatDate, formatDateTime, formatScore } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { QuizStatus } from "@/lib/types";
 import { requireViewer } from "@/server/auth";
-import { getAttempts, getCourseOutline } from "@/server/queries/learning";
+import { getAttempts, getCourseOutline, releaseDueAttempts } from "@/server/queries/learning";
 
 export const metadata: Metadata = { title: "Évaluation" };
 
 export default async function QuizPage(props: PageProps<"/espace/formations/[courseId]/evaluations/[quizId]">) {
   const { courseId, quizId } = await props.params;
   const viewer = await requireViewer();
+  await releaseDueAttempts();
   const supabase = await createClient();
   const basePath = `/espace/formations/${courseId}`;
 
@@ -117,6 +118,12 @@ export default async function QuizPage(props: PageProps<"/espace/formations/[cou
                   </ul>
                 </div>
               </div>
+              {status.reissued && !status.open_attempt_id ? (
+                <Alert tone="info" title="Nouvelles tentatives">
+                  L’administration SANADY vous a attribué {status.max_attempts} nouvelles tentatives pour cette évaluation. Nous vous
+                  conseillons de revoir les leçons du module avant de recommencer.
+                </Alert>
+              ) : null}
               {status.attempts_used > 0 && !status.open_attempt_id ? (
                 <Alert tone="warning">
                   Votre dernière tentative n’a pas atteint le seuil requis. Il vous reste {status.remaining_attempts} tentative

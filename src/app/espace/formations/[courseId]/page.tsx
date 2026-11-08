@@ -28,7 +28,7 @@ import { COURSE_LEVELS } from "@/lib/labels";
 import { coverUrl } from "@/lib/media";
 import { createClient } from "@/lib/supabase/server";
 import { requireViewer } from "@/server/auth";
-import { getCourseOutline, getLearnerCourses, getRecentActivity } from "@/server/queries/learning";
+import { getCourseOutline, getLearnerCourses, getRecentActivity, releaseDueAttempts } from "@/server/queries/learning";
 
 export async function generateMetadata(props: PageProps<"/espace/formations/[courseId]">): Promise<Metadata> {
   const { courseId } = await props.params;
@@ -39,6 +39,7 @@ export async function generateMetadata(props: PageProps<"/espace/formations/[cou
 export default async function CourseOverviewPage(props: PageProps<"/espace/formations/[courseId]">) {
   const { courseId } = await props.params;
   const viewer = await requireViewer();
+  await releaseDueAttempts();
 
   const enrollment = (await getLearnerCourses()).find((c) => c.course_id === courseId);
   if (!enrollment) notFound();

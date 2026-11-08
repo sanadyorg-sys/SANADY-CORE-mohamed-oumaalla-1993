@@ -301,6 +301,8 @@ export interface QuizStatus {
   due_on?: string | null;
   /** The company's due date has passed: no new attempt. */
   closed?: boolean;
+  /** A new set of attempts after a reset, none used yet. */
+  reissued?: boolean;
 }
 
 export interface AttemptQuestion {
