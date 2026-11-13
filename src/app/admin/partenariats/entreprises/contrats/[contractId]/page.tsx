@@ -19,6 +19,7 @@ import { confirmPayment } from "@/server/actions/finance";
 import { requireEnterpriseApprover } from "@/server/auth";
 import { enterpriseActor, getContract } from "@/server/queries/enterprise";
 import { contractInvoices } from "@/server/queries/finance";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Contrat — Enterprise" };
 
@@ -206,7 +207,7 @@ export default async function ContractPage(props: PageProps<"/admin/partenariats
                           ) : remaining <= 0 ? (
                             <Badge tone="success">Soldée</Badge>
                           ) : (
-                            <Badge tone={i.due_on && i.due_on < new Date().toISOString().slice(0, 10) ? "danger" : "warning"}>Reste {formatAmount(remaining, i.currency)}</Badge>
+                            <Badge tone={i.due_on && i.due_on < todayInMorocco() ? "danger" : "warning"}>Reste {formatAmount(remaining, i.currency)}</Badge>
                           )}
                         </div>
                         {i.cancel_reason ? <p className="text-label text-ink-600">Motif : {i.cancel_reason}</p> : null}

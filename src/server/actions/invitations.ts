@@ -164,7 +164,12 @@ export async function createInvitation(_prev: ActionState, formData: FormData): 
   if (error) return { ok: false, message: errorMessage(error) };
   // Company workspaces: the service the employee will join.
   if (parsed.data.department_id && kind === "institution_teacher") {
-    await supabase.rpc("set_invitation_department", { p_invitation: invitationId, p_department: parsed.data.department_id });
+    const { error: deptError } = await supabase.rpc("set_invitation_department", { p_invitation: invitationId, p_department: parsed.data.department_id });
+    if (deptError) {
+      // Never send an invitation without the service it was meant for.
+      await supabase.rpc("revoke_invitation", { p_invitation: invitationId });
+      return { ok: false, message: errorMessage(deptError) };
+    }
   }
 
   const result = await deliverInvitation({ invitationId: invitationId as string, kind, email, token, institutionId });

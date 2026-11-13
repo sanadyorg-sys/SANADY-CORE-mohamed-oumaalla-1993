@@ -31,6 +31,7 @@ import {
   setContributionStage,
 } from "@/server/actions/agreements";
 import type { AgreementDetail, ContributionDetail } from "@/server/queries/agreements";
+import { todayInMorocco } from "@/lib/period";
 
 /** Forms of partnership phase 4: agreements, milestones, contributions, documents. */
 
@@ -135,7 +136,7 @@ export function AgreementStatusForm({ id, options }: { id: string; options: Agre
       </Field>
       {choice === "signed" ? (
         <Field label="Date de signature" hint="La signature a lieu hors de la plateforme ; l’exemplaire signé doit être joint." error={state.fieldErrors?.signed_on}>
-          <Input name="signed_on" type="date" max={new Date().toISOString().slice(0, 10)} />
+          <Input name="signed_on" type="date" max={todayInMorocco()} />
         </Field>
       ) : null}
       <Field label="Commentaire (historique)" optional error={state.fieldErrors?.note}>
@@ -336,7 +337,7 @@ export function ContributionStageForm({ id, kind, currency, options }: { id: str
             </Field>
           ) : null}
           <Field label="Date de réception" optional={kind === "expertise"} error={e.received_on}>
-            <Input name="received_on" type="date" max={new Date().toISOString().slice(0, 10)} />
+            <Input name="received_on" type="date" max={todayInMorocco()} />
           </Field>
         </>
       ) : null}

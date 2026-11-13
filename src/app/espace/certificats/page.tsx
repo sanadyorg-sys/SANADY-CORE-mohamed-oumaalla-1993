@@ -8,6 +8,7 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState } from "@/components/ui/feedback";
 import { Badge, Card } from "@/components/ui/surface";
 import { publicEnv } from "@/lib/env";
+import { todayInMorocco } from "@/lib/period";
 import { formatDate, formatDuration } from "@/lib/format";
 import { requireViewer } from "@/server/auth";
 import { getCertificates, getLearnerCourses } from "@/server/queries/learning";
@@ -46,7 +47,7 @@ export default async function CertificatesPage() {
                 <h2 className="text-section font-semibold text-ink-900">En route vers votre premier certificat</h2>
                 <p className="mt-1 max-w-xl text-body text-ink-600">
                   Il est délivré automatiquement dès que toutes les leçons obligatoires d’une formation sont terminées et toutes ses évaluations
-                  réussies (70 % minimum).
+                  réussies.
                 </p>
                 <ul className="mt-6 space-y-3">
                   {onTheWay.map(({ course: c, ratio }) => (
@@ -90,7 +91,7 @@ export default async function CertificatesPage() {
             <EmptyState
               icon={Award}
               title="Aucun certificat pour le moment"
-              description="Un certificat est délivré automatiquement dès que toutes les leçons obligatoires d’une formation sont achevées et que l'ensemble des quiz sont validés avec succès (score minimal de 70 %)."
+              description="Un certificat est délivré automatiquement dès que toutes les leçons obligatoires d’une formation sont achevées et que l'ensemble des évaluations sont réussies."
             />
           </Card>
         )
@@ -98,12 +99,11 @@ export default async function CertificatesPage() {
         <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {certificates.map((c) => {
             const verifyUrl = `${publicEnv.appUrl}/verifier/${c.verification_code}`;
-            const completionDate = c.completed_at ? new Date(c.completed_at) : new Date();
+            // Year and month as in Morocco (the server runs in UTC).
+            const [issueYear, issueMonth] = todayInMorocco(c.completed_at ? new Date(c.completed_at) : new Date()).split("-").map(Number);
             const linkedInUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
               c.course_title,
-            )}&organizationName=${encodeURIComponent("Fondation Sanady")}&issueYear=${completionDate.getFullYear()}&issueMonth=${
-              completionDate.getMonth() + 1
-            }&certUrl=${encodeURIComponent(verifyUrl)}&certId=${encodeURIComponent(c.certificate_number)}`;
+            )}&organizationName=${encodeURIComponent("Fondation Sanady")}&issueYear=${issueYear}&issueMonth=${issueMonth}&certUrl=${encodeURIComponent(verifyUrl)}&certId=${encodeURIComponent(c.certificate_number)}`;
 
             return (
               <li key={c.id}>
@@ -141,7 +141,7 @@ export default async function CertificatesPage() {
                           <span>Durée <strong className="font-semibold text-ink-800">{formatDuration(c.course_duration_minutes)}</strong></span>
                           <span aria-hidden className="text-line-strong">•</span>
                           <span className="inline-flex items-center gap-1 text-success-700 font-medium text-xs">
-                            <CheckCircle2 className="size-3.5" aria-hidden /> Score ≥ 70 %
+                            <CheckCircle2 className="size-3.5" aria-hidden /> Évaluations réussies
                           </span>
                         </div>
                       </div>

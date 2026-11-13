@@ -143,10 +143,19 @@ export async function setUserStatus(userId: string, status: "active" | "suspende
   const { error: banError } = await createAdminClient().auth.admin.updateUserById(userId, {
     ban_duration: status === "suspended" ? "876000h" : "none",
   });
-  if (banError) console.error("[admin] ban update failed", banError.code);
-
   revalidatePath(`/admin/enseignants/${userId}`);
   revalidatePath("/admin/enseignants");
+  if (banError) {
+    // The platform already blocks the account, but the sign-in service did not follow: say so.
+    console.error("[admin] ban update failed", banError.code);
+    return {
+      ok: true,
+      message:
+        status === "suspended"
+          ? "Compte suspendu sur la plateforme, mais le blocage de connexion n’a pas pu être appliqué. Recommencez dans quelques minutes."
+          : "Compte réactivé sur la plateforme, mais la connexion n’a pas pu être débloquée. Recommencez dans quelques minutes.",
+    };
+  }
   return { ok: true, message: status === "suspended" ? "Compte suspendu." : "Compte réactivé." };
 }
 

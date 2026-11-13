@@ -148,7 +148,7 @@ export async function attachDocuments(_prev: ActionState, formData: FormData): P
   if (!uploads.documents.length) return { ok: false, fieldErrors: { documents: "Ajoutez un document PDF." } };
 
   const supabase = await createClient();
-  for (const doc of uploads.documents) {
+  for (const [i, doc] of uploads.documents.entries()) {
     const { error } = await supabase.rpc("add_partnership_document", {
       p_agreement: target === "agreement" ? target_id : null,
       p_contribution: target === "contribution" ? target_id : null,
@@ -158,8 +158,9 @@ export async function attachDocuments(_prev: ActionState, formData: FormData): P
       p_size: doc.size,
     });
     if (error) {
-      // Refused by the database (role, status): the verified file is removed.
-      await createAdminClient().storage.from("partnerships").remove(uploads.documents.map((d) => d.path));
+      // Refused by the database (role, status): the files not yet registered are
+      // removed; those already added keep their file.
+      await createAdminClient().storage.from("partnerships").remove(uploads.documents.slice(i).map((d) => d.path));
       return { ok: false, message: errorMessage(error) };
     }
   }

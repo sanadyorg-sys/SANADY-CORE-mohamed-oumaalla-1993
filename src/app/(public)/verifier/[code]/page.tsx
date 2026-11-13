@@ -15,6 +15,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Alert } from "@/components/ui/surface";
 import { publicEnv } from "@/lib/env";
+import { todayInMorocco } from "@/lib/period";
 import { formatDate, formatDuration } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { VerifiedCertificate } from "@/lib/types";
@@ -28,7 +29,12 @@ export const metadata: Metadata = {
 
 export default async function VerifyCertificatePage(props: PageProps<"/verifier/[code]">) {
   const { code: rawCode } = await props.params;
-  const code = decodeURIComponent(rawCode).trim().slice(0, 64);
+  // A malformed escape in the address is treated as an unknown code, not an error page.
+  let decoded = rawCode;
+  try {
+    decoded = decodeURIComponent(rawCode);
+  } catch {}
+  const code = decoded.trim().slice(0, 64);
 
   if (!(await rateLimit(`verify:${await clientIp()}`, 60, 15 * 60))) {
     return (
@@ -39,8 +45,18 @@ export default async function VerifyCertificatePage(props: PageProps<"/verifier/
   }
 
   const supabase = await createClient();
-  const { data } = await supabase.rpc("verify_certificate", { p_code: code });
+  const { data, error } = await supabase.rpc("verify_certificate", { p_code: code });
   const cert = data as VerifiedCertificate | null;
+  // A failed lookup must never read as « introuvable » (which suggests a forgery).
+  if (error) {
+    return (
+      <div data-wide-layout="true" className="w-full">
+        <Alert tone="warning" title="Vérification momentanément indisponible">
+          Le service de vérification ne répond pas pour le moment. Réessayez dans quelques minutes.
+        </Alert>
+      </div>
+    );
+  }
 
   const backLink = (
     <Link href="/verifier" className={buttonClasses({ variant: "secondary", className: "w-full sm:w-auto" })}>
@@ -68,12 +84,11 @@ export default async function VerifyCertificatePage(props: PageProps<"/verifier/
   const valid = cert.status === "valid";
   const verificationUrl = `${publicEnv.appUrl}/verifier/${encodeURIComponent(code)}`;
 
-  const issueDate = cert.issued_at ? new Date(cert.issued_at) : new Date();
+  // Year and month of issue as in Morocco (the server runs in UTC).
+  const [issueYear, issueMonth] = todayInMorocco(cert.issued_at ? new Date(cert.issued_at) : new Date()).split("-").map(Number);
   const linkedInCertUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(
     cert.course_title,
-  )}&organizationName=${encodeURIComponent(cert.issuer || "Fondation Sanady")}&issueYear=${issueDate.getFullYear()}&issueMonth=${
-    issueDate.getMonth() + 1
-  }&certUrl=${encodeURIComponent(verificationUrl)}&certId=${encodeURIComponent(cert.certificate_number)}`;
+  )}&organizationName=${encodeURIComponent(cert.issuer || "Fondation Sanady")}&issueYear=${issueYear}&issueMonth=${issueMonth}&certUrl=${encodeURIComponent(verificationUrl)}&certId=${encodeURIComponent(cert.certificate_number)}`;
 
   return (
     <div data-wide-layout="true" className="w-full space-y-6">
@@ -164,7 +179,7 @@ export default async function VerifyCertificatePage(props: PageProps<"/verifier/
             « {cert.course_title} »
           </p>
           <p className="mx-auto mt-2 max-w-lg text-[11px] sm:text-xs text-ink-500 leading-relaxed">
-            et satisfait avec succès à l’ensemble des évaluations pédagogiques continues avec le niveau de maîtrise requis (score minimal de 70 % par module).
+            et satisfait avec succès à l’ensemble des évaluations pédagogiques continues avec le niveau de maîtrise requis pour chaque module.
           </p>
         </div>
 
@@ -185,7 +200,7 @@ export default async function VerifyCertificatePage(props: PageProps<"/verifier/
           <div className="border-t sm:border-t-0 border-l border-line/60 p-1">
             <span className="block text-[10px] font-bold uppercase tracking-wider text-ink-500">Statut de validation</span>
             <span className="mt-0.5 inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-success-700">
-              <CheckCircle2 className="size-3.5" aria-hidden /> Validé (≥ 70 %)
+              <CheckCircle2 className="size-3.5" aria-hidden /> Validé
             </span>
           </div>
         </div>

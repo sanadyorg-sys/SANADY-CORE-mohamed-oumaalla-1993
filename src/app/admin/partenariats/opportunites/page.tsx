@@ -12,6 +12,7 @@ import { formatDate, formatRelative } from "@/lib/format";
 import { INTERVENTION_FIELDS, OPPORTUNITY_STATUS, type OpportunityStatus } from "@/lib/partnerships";
 import { requirePartnershipStaff } from "@/server/auth";
 import { listOpportunities } from "@/server/queries/partnerships";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Projets à la recherche de partenaires" };
 
@@ -30,7 +31,7 @@ export default async function OpportunitiesPage(props: PageProps<"/admin/partena
   const sp = await props.searchParams;
   const tab = TABS.find((t) => t.key === sp.onglet) ?? TABS[0]!;
   const rows = await listOpportunities({ status: tab.status });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
 
   return (
     <>

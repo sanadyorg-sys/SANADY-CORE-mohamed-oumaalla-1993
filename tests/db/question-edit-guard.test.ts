@@ -85,3 +85,12 @@ describe("editing a question already answered", () => {
     expect(id).toBe(question.id);
   });
 });
+
+describe("direct table updates", () => {
+  it("cannot change a question by updating the table, even as its editor", async () => {
+    const { question } = await courseWithAttempt({ submit: true });
+    await expect(db.as(admin, (q) => q(`update public.questions set points = 20 where id = $1`, [question.id]))).rejects.toThrow(/permission denied/i);
+    const [row] = await db.sql<{ points: number }>(`select points from public.questions where id = $1`, [question.id]);
+    expect(Number(row!.points)).not.toBe(20);
+  });
+});

@@ -63,7 +63,7 @@ export default async function PublicCoursePage({ params }: PageProps<"/formation
   const includes = [
     videos ? { icon: PlayCircle, text: `${plural(videos, "vidéo explicative", "vidéos explicatives")}` } : null,
     documents ? { icon: FileText, text: `${plural(documents, "document")} à télécharger` } : null,
-    quizzes ? { icon: ClipboardCheck, text: `${plural(quizzes, "évaluation")} de module (seuil 70%)` } : null,
+    quizzes ? { icon: ClipboardCheck, text: `${plural(quizzes, "évaluation")} de module (seuil ${firstQuiz?.pass_threshold ?? 70} %)` } : null,
     { icon: Award, text: "Certificat vérifiable par QR code" },
     { icon: MonitorSmartphone, text: "Accessible sur ordinateur, tablette et mobile" },
     { icon: InfinityIcon, text: "À suivre à votre rythme" },
@@ -171,7 +171,7 @@ export default async function PublicCoursePage({ params }: PageProps<"/formation
               </li>
               <li className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 backdrop-blur-xs">
                 <Award className="size-4 text-accent-400" aria-hidden />
-                <span>Validation : 70 % requis</span>
+                <span>Validation : {firstQuiz?.pass_threshold ?? 70} % requis</span>
               </li>
             </ul>
 

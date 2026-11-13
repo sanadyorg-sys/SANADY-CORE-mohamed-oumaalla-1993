@@ -44,6 +44,7 @@ import { listMetrics, listReports, platformScope } from "@/server/queries/impact
 import { portalEnabled, portalForOrganization } from "@/server/queries/portal";
 import { getOrganization, partnershipTeam, pipelineActor } from "@/server/queries/partnerships";
 import { listTemplates, organizationReferences } from "@/server/queries/templates";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Organisation partenaire" };
 
@@ -73,7 +74,7 @@ export default async function OrganizationPage(props: PageProps<"/admin/partenar
   const relationships = o.enterprise_status ? await organizationRelationships(o.id) : null;
   const activePartner = ["agreement_signed", "implementation", "monitoring", "renewal_or_closure"].includes(o.status);
   const stageIndex = MAIN_STAGES.indexOf(o.status);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
 
   return (
     <>

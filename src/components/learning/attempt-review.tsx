@@ -36,7 +36,8 @@ export function AttemptSummary({ result }: { result: AttemptResult }) {
   );
 }
 
-export function AttemptQuestions({ result }: { result: AttemptResult }) {
+/** `forLearner` false: seen by a supervisor, so the chosen answer is not « yours ». */
+export function AttemptQuestions({ result, forLearner = true }: { result: AttemptResult; forLearner?: boolean }) {
   return (
     <ol className="space-y-4">
       {result.questions.map((q, i) => (
@@ -72,7 +73,7 @@ export function AttemptQuestions({ result }: { result: AttemptResult }) {
                       >
                         <span className="text-ink-800">{o.label}</span>
                         <span className="flex flex-wrap justify-end gap-1.5">
-                          {chosen ? <Badge tone="brand">Votre réponse</Badge> : null}
+                          {chosen ? <Badge tone="brand">{forLearner ? "Votre réponse" : "Réponse choisie"}</Badge> : null}
                           {result.answers_revealed && correct ? <Badge tone="success">Bonne réponse</Badge> : null}
                         </span>
                       </li>

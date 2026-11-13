@@ -15,6 +15,7 @@ import { uuidSchema } from "@/lib/validation";
 import { createProjectCourse, deleteOutlineItem, moveOutlineItem, removeProjectTrainer, restoreTrainingVersion, setTrainingTaskStatus } from "@/server/actions/studio";
 import { requireStaff } from "@/server/auth";
 import { getProject, productionTeam, projectFormOptions, studioActor } from "@/server/queries/studio";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Projet de formation — Studio" };
 
@@ -36,7 +37,7 @@ export default async function ProjectPage(props: PageProps<"/admin/studio/[proje
   const [team, options] = actor.manage ? await Promise.all([productionTeam(), projectFormOptions(p.organization_id)]) : [[], { tenants: [], proposals: [] }];
   const editable = actor.manage && EDITABLE.includes(p.status);
   const done = checklist ? TRAINING_STEPS.filter((s) => checklist[s.key]).length : 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
   const label = (m: { full_name: string | null; email: string }) => m.full_name || m.email;
   const canOpenCourse = Boolean(p.course_id) && (viewer.isCourseStaff || trainers.some((t) => t.id === viewer.id));
 

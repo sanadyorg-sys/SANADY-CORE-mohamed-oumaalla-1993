@@ -11,6 +11,7 @@ import { EMPLOYEE_COUNTS, ENTERPRISE_SERVICES, REQUEST_STATUS, type RequestStatu
 import { requireEnterpriseStaff } from "@/server/auth";
 import { runHousekeeping } from "@/server/housekeeping";
 import { enterpriseWatchlist, listClients, listProposals, listRequests, openEnterpriseTasks, requestCounts } from "@/server/queries/enterprise";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "SANADY Enterprise — demandes" };
 
@@ -55,7 +56,7 @@ export default async function EnterpriseInboxPage(props: PageProps<"/admin/parte
     listProposals({}),
     enterpriseWatchlist(),
   ]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
   const active = clients.filter((c) => c.enterprise_status === "active_service").length;
   const pending = proposals.filter((p) => ["draft", "internal_review", "approved", "sent"].includes(p.status)).length;
 

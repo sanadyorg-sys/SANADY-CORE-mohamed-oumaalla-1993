@@ -9,6 +9,7 @@ import { formatDate, formatRelative } from "@/lib/format";
 import { SERVICE_PLANS, TENANT_STATUS, type TenantStatus } from "@/lib/enterprise";
 import { requireEnterpriseStaff } from "@/server/auth";
 import { listTenants } from "@/server/queries/enterprise";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Espaces de formation — Enterprise" };
 
@@ -27,7 +28,7 @@ export default async function TenantsPage(props: PageProps<"/admin/partenariats/
   const sp = await props.searchParams;
   const tab = TABS.find((t) => t.key === sp.onglet) ?? TABS[0]!;
   const rows = await listTenants({ status: tab.status });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
 
   return (
     <>

@@ -68,12 +68,15 @@ export function PartnershipApplicationForm({
       const form = formRef.current;
       if (!form) return;
       for (const [k, v] of Object.entries(saved)) {
+        // A project or field chosen through the link wins over an older draft.
+        if ((k === "opportunity" && defaultProject) || (k === "intervention_field" && defaultField)) continue;
         const el = form.elements.namedItem(k);
         if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) el.value = v;
       }
     } catch {
       /* storage unavailable: start empty */
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restored once, on arrival
   }, []);
 
   // Server-side errors: show them on the first step concerned (adjusted during

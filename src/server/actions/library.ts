@@ -133,6 +133,14 @@ export async function setLibraryFile(input: { id: string; path: string; fileName
   }
   const f = parsed.data;
   const admin = createAdminClient();
+  const supabase = await createClient();
+  const { data: before } = await supabase.from("library_resources").select("file_path, external_url, kind").eq("id", f.id).maybeSingle();
+  const current = before as { file_path: string | null; external_url: string | null; kind: string } | null;
+  if (!current) return { ok: false, message: messageFor("not_found") };
+  // A rejected upload is removed, never the file the resource already uses.
+  const discard = async () => {
+    if (f.path !== current.file_path) await admin.storage.from(LIBRARY_BUCKET).remove([f.path]);
+  };
 
   let pageCount: number | null = null;
   if (f.mimeType === "application/pdf") {
@@ -141,17 +149,13 @@ export async function setLibraryFile(input: { id: string; path: string; fileName
       if (!file) throw new Error("missing");
       pageCount = (await PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true, updateMetadata: false })).getPageCount();
     } catch {
-      await admin.storage.from(LIBRARY_BUCKET).remove([f.path]);
+      await discard();
       return { ok: false, message: "Ce fichier n’est pas un PDF lisible. Vérifiez qu’il n’est pas protégé par mot de passe." };
     }
   }
 
-  const supabase = await createClient();
-  const { data: before } = await supabase.from("library_resources").select("file_path, external_url, kind").eq("id", f.id).maybeSingle();
-  const current = before as { file_path: string | null; external_url: string | null; kind: string } | null;
-  if (!current) return { ok: false, message: messageFor("not_found") };
   if (current.external_url || current.kind === "externe") {
-    await admin.storage.from(LIBRARY_BUCKET).remove([f.path]);
+    await discard();
     return { ok: false, message: "Cette ressource est un lien externe : retirez le lien avant d’ajouter un fichier." };
   }
   const { error } = await supabase

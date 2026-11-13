@@ -5,6 +5,7 @@ import { uuidSchema } from "@/lib/validation";
 import { getViewer } from "@/server/auth";
 import { buildTeacherReport } from "@/server/queries/institution";
 import { rateLimit } from "@/server/rate-limit";
+import { todayInMorocco } from "@/lib/period";
 
 /** Individual progress report (PDF) for an institution administrator. */
 export async function GET(_request: Request, ctx: RouteContext<"/api/rapports/[institutionId]/[userId]">) {
@@ -29,7 +30,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/rapports/[i
     .replace(/[^A-Za-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
-  const date = new Date().toISOString().slice(0, 10);
+  const date = todayInMorocco();
 
   return new NextResponse(Buffer.from(bytes), {
     headers: {

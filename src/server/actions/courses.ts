@@ -571,6 +571,13 @@ export async function setLessonPdf(lessonId: string, courseId: string, path: str
     : { data: null };
   if (!editable?.length || !path.startsWith(`${courseId}/${lessonId}/`)) return { ok: false, message: messageFor("forbidden") };
   const admin = createAdminClient();
+  const supabase = await createClient();
+  const { data: before } = await supabase.from("lessons").select("pdf_path").eq("id", lessonId).maybeSingle();
+  const prev = (before as { pdf_path: string | null } | null)?.pdf_path;
+  // A rejected upload is removed, never the document the lesson already uses.
+  const discard = async () => {
+    if (path !== prev) await admin.storage.from(MEDIA_BUCKET).remove([path]);
+  };
   const { data: file, error: downloadError } = await admin.storage.from(MEDIA_BUCKET).download(path);
   if (downloadError || !file) return { ok: false, message: "Le document téléversé est introuvable." };
 
@@ -579,12 +586,10 @@ export async function setLessonPdf(lessonId: string, courseId: string, path: str
     const pdf = await PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true, updateMetadata: false });
     pageCount = pdf.getPageCount();
   } catch {
-    await admin.storage.from(MEDIA_BUCKET).remove([path]);
+    await discard();
     return { ok: false, message: "Ce fichier n’est pas un PDF lisible. Vérifiez qu’il n’est pas protégé par mot de passe." };
   }
 
-  const supabase = await createClient();
-  const { data: before } = await supabase.from("lessons").select("pdf_path").eq("id", lessonId).maybeSingle();
   const { data: updated, error } = await supabase
     .from("lessons")
     .update({ pdf_path: path, pdf_page_count: pageCount })
@@ -592,10 +597,9 @@ export async function setLessonPdf(lessonId: string, courseId: string, path: str
     .eq("kind", "pdf")
     .select("id");
   if (error || !updated?.length) {
-    await admin.storage.from(MEDIA_BUCKET).remove([path]);
+    await discard();
     return { ok: false, message: error ? errorMessage(error) : NOT_SAVED };
   }
-  const prev = (before as { pdf_path: string | null } | null)?.pdf_path;
   if (prev && prev !== path) await supabase.storage.from(MEDIA_BUCKET).remove([prev]);
 
   revalidateCourse(courseId);

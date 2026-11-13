@@ -87,14 +87,18 @@ export async function attachContractDocument(_prev: ActionState, formData: FormD
   const parsed = parseInput(z.object({ contract_id: uuidSchema, kind: z.enum(["draft", "signed", "supporting"], "Choisissez le type de document.") }), formData);
   if (!parsed.ok) return { ok: false, fieldErrors: parsed.fieldErrors };
   const { contract_id, kind } = parsed.data;
+  // Files are moved with the service key: first make sure this person can see the contract.
+  const supabase = await createClient();
+  const { data: visible } = await supabase.from("enterprise_contracts").select("id").eq("id", contract_id).maybeSingle();
+  if (!visible) return { ok: false, message: messageFor("not_found") };
   const uploads = await verifyPdfUploads("enterprise", formData, "contracts", contract_id);
   if (!uploads.ok) return uploads.state;
   if (!uploads.documents.length) return { ok: false, fieldErrors: { documents: "Ajoutez un document PDF." } };
-  const supabase = await createClient();
-  for (const doc of uploads.documents) {
+  for (const [i, doc] of uploads.documents.entries()) {
     const { error } = await supabase.rpc("add_contract_document", { p_contract: contract_id, p_kind: kind, p_path: doc.path, p_name: doc.name, p_size: doc.size });
     if (error) {
-      await createAdminClient().storage.from("enterprise").remove(uploads.documents.map((d) => d.path));
+      // Only the files not yet registered: those already added keep their file.
+      await createAdminClient().storage.from("enterprise").remove(uploads.documents.slice(i).map((d) => d.path));
       return { ok: false, message: errorMessage(error) };
     }
   }

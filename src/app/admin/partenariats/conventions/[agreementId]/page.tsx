@@ -25,6 +25,7 @@ import { setMilestoneDone } from "@/server/actions/agreements";
 import { requirePartnershipStaff } from "@/server/auth";
 import { getAgreement, linkOptions } from "@/server/queries/agreements";
 import { pipelineActor } from "@/server/queries/partnerships";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Convention de partenariat" };
 
@@ -40,7 +41,7 @@ export default async function AgreementPage(props: PageProps<"/admin/partenariat
   const links = await linkOptions(a.organization_id);
   const draft = a.status === "draft";
   const closed = a.status === "completed" || a.status === "archived";
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
   const docKinds: DocumentKind[] = actor.signatory && ["approved", "signed", "active"].includes(a.status) ? ["signed", "draft", "supporting"] : ["draft", "supporting"];
 
   return (

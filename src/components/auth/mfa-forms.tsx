@@ -10,6 +10,7 @@ import { Field, Input } from "@/components/ui/field";
 import { Alert } from "@/components/ui/surface";
 import { CopyButton } from "@/components/ui/copy-button";
 import { createClient } from "@/lib/supabase/browser";
+import { todayInMorocco } from "@/lib/period";
 
 /** Six-digit one-time code input (numeric keyboard on mobile, autofill from authenticator). */
 function CodeInput({
@@ -84,7 +85,7 @@ export function MfaEnrollForm({ suite }: { suite: string }) {
       }
       const { data, error: enrollError } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName: `SANADY ${new Date().toISOString().slice(0, 10)}`,
+        friendlyName: `SANADY ${todayInMorocco()}`,
         issuer: "SANADY",
       });
       if (enrollError || !data) {

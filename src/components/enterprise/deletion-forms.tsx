@@ -6,6 +6,7 @@ import { Button, type ButtonVariant } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { FormMessage, SubmitButton, useActionToast } from "@/components/ui/form";
 import { INITIAL_ACTION_STATE, type ActionState } from "@/lib/types";
+import { todayInMorocco } from "@/lib/period";
 
 /** Small forms of the deletion workflow (each bound to its server action). */
 
@@ -32,7 +33,7 @@ export function StepForm({ action, kind }: { action: Action; kind: "notice" | "d
   const [state, run] = useActionState(action, INITIAL_ACTION_STATE);
   useActionToast(state);
   const e = state.fieldErrors ?? {};
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
   return (
     <form action={run} className="grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-end">
       {!state.ok && state.message ? (

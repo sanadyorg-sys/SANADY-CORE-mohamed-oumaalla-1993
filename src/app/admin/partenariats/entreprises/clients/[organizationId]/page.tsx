@@ -34,6 +34,7 @@ import { requireEnterpriseStaff } from "@/server/auth";
 import { enterpriseActor, enterpriseTeam, getClient, tenantForOrganization } from "@/server/queries/enterprise";
 import { organizationRelationships } from "@/server/queries/finance";
 import { listProjects, productionTeam, projectFormOptions } from "@/server/queries/studio";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Client — Enterprise" };
 const MAIN = ENTERPRISE_ORDER.slice(0, 11);
@@ -55,7 +56,7 @@ export default async function ClientPage(props: PageProps<"/admin/partenariats/e
   if (!detail) notFound();
   const { client: c, contacts, notes, history, tasks, requests, proposals } = detail;
   const stageIndex = MAIN.indexOf(c.enterprise_status);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
   const others = team.filter((m) => m.id !== viewer.id);
   const labels: Record<string, string> = { ...ENTERPRISE_PIPELINE };
 

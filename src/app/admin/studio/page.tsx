@@ -11,6 +11,7 @@ import { TASK_KINDS, TASK_STATUS, TRAINING_STATUS, type TrainingStatus } from "@
 import { setTrainingTaskStatus } from "@/server/actions/studio";
 import { requireStaff } from "@/server/auth";
 import { listProjects, myTrainingTasks } from "@/server/queries/studio";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Studio de production" };
 
@@ -29,7 +30,7 @@ export default async function StudioPage(props: PageProps<"/admin/studio">) {
   const sp = await props.searchParams;
   const tab = TABS.find((t) => t.key === sp.onglet) ?? TABS[0]!;
   const [rows, tasks] = await Promise.all([listProjects({ status: tab.status }), myTrainingTasks(viewer.id)]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
 
   return (
     <>

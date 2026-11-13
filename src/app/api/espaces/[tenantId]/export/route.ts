@@ -18,10 +18,10 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/espaces/[te
   const supabase = await createClient();
   const { data: allowed } = await supabase.rpc("can_export_tenant", { p_tenant: tenantId });
   if (!allowed) return new Response("Accès refusé.", { status: 403 });
+  // Built first, recorded after: a failed build is not logged as a download.
+  const { bytes, fileName } = await buildTenantExport(tenantId, displayName(viewer.profile));
   const { error } = await supabase.rpc("record_tenant_export", { p_tenant: tenantId });
   if (error) return new Response("Accès refusé.", { status: 403 });
-
-  const { bytes, fileName } = await buildTenantExport(tenantId, displayName(viewer.profile));
   return new Response(Buffer.from(bytes), {
     headers: {
       "Content-Type": "application/zip",

@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { MOBILE_HEADERS, createClientFromBearer } from "@/lib/supabase/bearer";
 import type { Certificate, PlatformSettings } from "@/lib/types";
 import { uuidSchema } from "@/lib/validation";
+import { rateLimit } from "@/server/rate-limit";
 
 /**
  * GET /api/mobile/v1/certificates/:certificateId/pdf
@@ -20,6 +21,10 @@ export async function GET(request: Request, ctx: RouteContext<"/api/mobile/v1/ce
   const auth = await createClientFromBearer(request);
   if (!auth) return new NextResponse("Authentification requise", { status: 401, headers: MOBILE_HEADERS });
   const { supabase } = auth;
+  // Each request renders a PDF: cap how often one account can ask.
+  if (!(await rateLimit(`mobile:certificate:${auth.userId}`, 60, 60 * 60))) {
+    return new NextResponse("Trop de demandes. Réessayez plus tard.", { status: 429, headers: MOBILE_HEADERS });
+  }
 
   const [{ data: cert }, { data: settings }, { data: style }] = await Promise.all([
     supabase.from("certificates").select("*").eq("id", certificateId).maybeSingle(),

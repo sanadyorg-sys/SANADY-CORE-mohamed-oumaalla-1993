@@ -12,6 +12,7 @@ import { APPLICATION_STATUS, CONTRIBUTION_TYPES, FIELD_SLUGS, INTERVENTION_FIELD
 import { requirePartnershipStaff } from "@/server/auth";
 import { partnershipWatchlist } from "@/server/queries/agreements";
 import { applicationCounts, listApplications, openTasks, purgeExpiredApplications } from "@/server/queries/partnerships";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Partenariats — candidatures" };
 
@@ -39,7 +40,7 @@ export default async function PartnershipInboxPage(props: PageProps<"/admin/part
   ]);
   const watchCount = watch ? watch.renewals.length + watch.milestones.length + watch.contributions.length : 0;
   const open = (counts.received ?? 0) + (counts.under_review ?? 0);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
 
   return (
     <>

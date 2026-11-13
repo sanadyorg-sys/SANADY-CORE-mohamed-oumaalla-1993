@@ -9,6 +9,7 @@ import { formatDate, formatRelative } from "@/lib/format";
 import { CONTRIBUTION_KINDS, CONTRIBUTION_STAGE, contributionAmount, formatAmount, type ContributionStage } from "@/lib/partnerships";
 import { requirePartnershipStaff } from "@/server/auth";
 import { contributionTotals, listContributions } from "@/server/queries/agreements";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Contributions des partenaires" };
 
@@ -26,7 +27,7 @@ export default async function ContributionsPage(props: PageProps<"/admin/partena
   const sp = await props.searchParams;
   const tab = TABS.find((t) => t.key === sp.onglet) ?? TABS[0]!;
   const [rows, totals] = await Promise.all([listContributions({ stage: tab.stage }), contributionTotals()]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
 
   // Financial totals per currency, kept apart: promised, actually received, verified.
   const money = new Map<string, { promised: number; received: number; verified: number }>();

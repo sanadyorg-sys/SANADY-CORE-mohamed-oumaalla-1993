@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { INITIAL_ACTION_STATE, type ActionState } from "@/lib/types";
 import { attachContractDocument, prepareContractUpload, reviewOverage, saveContract, saveContractLine, setContractStatus } from "@/server/actions/contracts";
 import type { ContractDetail } from "@/server/queries/enterprise";
+import { todayInMorocco } from "@/lib/period";
 
 /** Forms of SANADY Enterprise phase E5: contracts, documents, usage review. */
 
@@ -200,7 +201,7 @@ export function ContractStatusForm({ id, options }: { id: string; options: Contr
       </Field>
       {choice === "signed" ? (
         <Field label="Date de signature" hint="La signature a lieu hors de la plateforme ; l’exemplaire signé doit être joint." error={state.fieldErrors?.signed_on}>
-          <Input name="signed_on" type="date" max={new Date().toISOString().slice(0, 10)} />
+          <Input name="signed_on" type="date" max={todayInMorocco()} />
         </Field>
       ) : null}
       <Field label={choice === "closed" ? "Motif de la clôture" : "Commentaire (historique)"} optional={choice !== "closed"} error={state.fieldErrors?.note}>

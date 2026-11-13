@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { emailSchema, optionalText, uuidSchema } from "./validation";
 import { CONTRIBUTION_TYPES, INTERVENTION_FIELDS, ORG_TYPES, PLATFORM_MEASURES, type PlatformMeasure } from "./partnerships";
+import { todayInMorocco } from "@/lib/period";
 
 /**
  * Partnership application, validated step by step in the browser and again,
@@ -110,7 +111,7 @@ export const opportunitySchema = z.object({
   deadline: z
     .union([z.iso.date("Date invalide."), z.literal("")])
     .optional()
-    .refine((v) => !v || v >= new Date().toISOString().slice(0, 10), "La date limite ne peut pas être passée."),
+    .refine((v) => !v || v >= todayInMorocco(), "La date limite ne peut pas être passée."),
 });
 
 /* ─── Phase 4: agreements and contributions ─────────────────────────────── */
@@ -176,7 +177,7 @@ export const contributionSchema = z
 
 export const deliverySchema = z.object({
   amount_received: amount,
-  received_on: optionalDate.refine((v) => !v || v <= new Date().toISOString().slice(0, 10), "La date ne peut pas être future."),
+  received_on: optionalDate.refine((v) => !v || v <= todayInMorocco(), "La date ne peut pas être future."),
   hours_delivered: hours,
 });
 

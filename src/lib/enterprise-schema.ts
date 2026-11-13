@@ -2,6 +2,7 @@ import { z } from "zod";
 import { emailSchema, optionalText } from "./validation";
 import { COST_CATEGORIES, EMPLOYEE_COUNTS, ENTERPRISE_SERVICES, EXISTING_CONTENT, LANGUAGES, LINE_CATEGORIES, PAYMENT_METHODS, REVENUE_CATEGORIES, SUPPORT_CATEGORIES, type SupportCategory } from "./enterprise";
 import { ORG_TYPES } from "./partnerships";
+import { todayInMorocco } from "@/lib/period";
 
 /**
  * Enterprise request, validated step by step in the browser and again, in
@@ -84,7 +85,7 @@ export const proposalSchema = z.object({
   valid_until: z
     .union([z.iso.date("Date invalide."), z.literal("")])
     .optional()
-    .refine((v) => !v || v >= new Date().toISOString().slice(0, 10), "La date ne peut pas être passée."),
+    .refine((v) => !v || v >= todayInMorocco(), "La date ne peut pas être passée."),
 });
 
 export const lineSchema = z.object({
@@ -206,14 +207,14 @@ export const invoiceSchema = z
     category: z.enum(keys(REVENUE_CATEGORIES), "Choisissez une catégorie."),
     description: optionalText(500),
     amount: amountRequired,
-    issued_on: isoDay.refine((v) => v <= new Date().toISOString().slice(0, 10), "La date ne peut pas être future."),
+    issued_on: isoDay.refine((v) => v <= todayInMorocco(), "La date ne peut pas être future."),
     due_on: z.union([z.iso.date("Date invalide."), z.literal("")]).optional(),
   })
   .refine((v) => !v.due_on || v.due_on >= v.issued_on, { message: "L’échéance suit l’émission.", path: ["due_on"] });
 
 export const paymentSchema = z.object({
   amount: amountRequired,
-  received_on: isoDay.refine((v) => v <= new Date().toISOString().slice(0, 10), "La date ne peut pas être future."),
+  received_on: isoDay.refine((v) => v <= todayInMorocco(), "La date ne peut pas être future."),
   method: z.enum(keys(PAYMENT_METHODS)).default("transfer"),
   bank_reference: optionalText(120),
 });

@@ -8,6 +8,7 @@ import { FOUNDATION } from "@/lib/institution";
 import { AGREEMENT_STATUS } from "@/lib/partnerships";
 import { requirePartnerMember } from "@/server/auth";
 import { portalOverview } from "@/server/queries/portal";
+import { todayInMorocco } from "@/lib/period";
 
 export const metadata: Metadata = { title: "Espace partenaire" };
 
@@ -15,7 +16,7 @@ export default async function PartnerHome() {
   await requirePartnerMember();
   const v = await portalOverview();
   if (!v) return <Alert tone="warning">L’espace partenaire n’est pas disponible pour le moment.</Alert>;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInMorocco();
 
   return (
     <>

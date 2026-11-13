@@ -1,4 +1,4 @@
-import { parsePeriod } from "@/lib/period";
+import { parsePeriod, todayInMorocco } from "@/lib/period";
 import { uuidSchema } from "@/lib/validation";
 import { csvResponse, pct, toCsv } from "@/server/csv";
 import { getViewer } from "@/server/auth";
@@ -34,7 +34,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/exports/etab
     if (report === "enseignants") {
       const teachers = await getTeacherSummaries(institutionId);
       return csvResponse(
-        `enseignants_${new Date().toISOString().slice(0, 10)}.csv`,
+        `enseignants_${todayInMorocco()}.csv`,
         toCsv(
           ["Nom", "E-mail", "Membre depuis", "Formations affectées", "Terminées", "Certificats", "Dernière activité", "Évaluations à débloquer", "Inactif"],
           teachers.map((t) => [

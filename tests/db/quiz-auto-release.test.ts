@@ -84,6 +84,16 @@ describe("automatic second set of attempts", () => {
     expect((await status()).attempts_used).toBe(1);
   });
 
+  it("records a release once, even when called twice", async () => {
+    const { mod, teacher, fail, age } = await setup();
+    for (let i = 0; i < 3; i++) await fail();
+    await age(8);
+    expect(await db.rpc<number>(teacher, "release_due_quiz_attempts", [])).toBe(3);
+    expect(await db.rpc<number>(teacher, "release_due_quiz_attempts", [])).toBe(0);
+    const audit = await db.sql(`select 1 from public.audit_logs where action = 'quiz_attempts_auto_released' and entity_id = $1`, [mod.quizId]);
+    expect(audit).toHaveLength(1);
+  });
+
   it("leaves a passed evaluation and a learner with attempts left alone", async () => {
     const { mod, teacher, fail, age } = await setup();
     await fail();

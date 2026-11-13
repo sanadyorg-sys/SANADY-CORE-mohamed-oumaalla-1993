@@ -33,7 +33,7 @@ export default async function InstitutionAttemptPage(
       <AttemptSummary result={result} />
       <section className="mt-8">
         <h2 className="mb-4 text-section font-semibold text-ink-900">Réponses</h2>
-        <AttemptQuestions result={result} />
+        <AttemptQuestions result={result} forLearner={false} />
       </section>
     </div>
   );

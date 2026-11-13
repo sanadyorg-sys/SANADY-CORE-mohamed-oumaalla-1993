@@ -6,10 +6,11 @@ import { FormActions, FormMessage, SubmitButton, useActionToast } from "@/compon
 import { COST_CATEGORIES, PAYMENT_METHODS, REVENUE_CATEGORIES } from "@/lib/enterprise";
 import { INITIAL_ACTION_STATE } from "@/lib/types";
 import { cancelInvoice, recordCost, recordInvoice, recordPayment } from "@/server/actions/finance";
+import { todayInMorocco } from "@/lib/period";
 
 /** Forms of SANADY Enterprise phase E6: amounts recorded from the Foundation's accounting. */
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayInMorocco();
 
 export function InvoiceForm({ contractId, currency }: { contractId: string; currency: string }) {
   const [state, action] = useActionState(recordInvoice, INITIAL_ACTION_STATE);
