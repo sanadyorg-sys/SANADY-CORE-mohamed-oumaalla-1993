@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types";
 import type { ReportCourse, TeacherReportData } from "@/lib/pdf/report";
 import { getCourseOutline } from "./learning";
+import { checked } from "@/lib/supabase/checked";
 
 /*
  * Every query below runs with the institution administrator's session.
@@ -20,7 +21,7 @@ import { getCourseOutline } from "./learning";
 
 export async function getInstitution(institutionId: string) {
   const supabase = await createClient();
-  const { data } = await supabase.from("institutions").select("*").eq("id", institutionId).maybeSingle();
+  const { data } = await checked(supabase.from("institutions").select("*").eq("id", institutionId).maybeSingle());
   return data as Institution | null;
 }
 
@@ -52,17 +53,17 @@ export async function getInstitutionInvitations(institutionId: string, { openOnl
     .order("created_at", { ascending: false })
     .limit(300);
   if (openOnly) query = query.is("accepted_at", null).is("revoked_at", null);
-  const { data } = await query;
+  const { data } = await checked(query);
   return (data ?? []) as Invitation[];
 }
 
 export async function getEnrollmentCodes(institutionId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("enrollment_codes")
     .select("*")
     .eq("institution_id", institutionId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }));
   return (data ?? []) as EnrollmentCode[];
 }
 
@@ -76,22 +77,22 @@ export interface AuthorizedCourse extends Pick<Course, "id" | "title" | "summary
 export async function getAuthorizedCourses(institutionId: string): Promise<AuthorizedCourse[]> {
   const supabase = await createClient();
   const [{ data: perms }, { data: assignments }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("course_permissions")
       .select("granted_at, course:courses(id, title, summary, cover_path, estimated_minutes, level, status, category:course_categories(name))")
       .eq("institution_id", institutionId)
-      .is("revoked_at", null),
-    supabase
+      .is("revoked_at", null)),
+    checked(supabase
       .from("course_assignments")
       .select("course_id, user_id")
       .eq("institution_id", institutionId)
-      .is("revoked_at", null),
+      .is("revoked_at", null)),
   ]);
 
   const assigned = (assignments ?? []) as Array<{ course_id: string; user_id: string }>;
   const courseIds = [...new Set(assigned.map((a) => a.course_id))];
   const { data: enrollments } = courseIds.length
-    ? await supabase.from("enrollments").select("course_id, user_id, status").in("course_id", courseIds)
+    ? await checked(supabase.from("enrollments").select("course_id, user_id, status").in("course_id", courseIds))
     : { data: [] };
   const completedKeys = new Set(
     ((enrollments ?? []) as Array<{ course_id: string; user_id: string; status: string }>)
@@ -135,7 +136,7 @@ export async function getAssignments(institutionId: string, filter: { courseId?:
     .is("revoked_at", null);
   if (filter.courseId) query = query.eq("course_id", filter.courseId);
   if (filter.userId) query = query.eq("user_id", filter.userId);
-  const { data } = await query.order("assigned_at", { ascending: false });
+  const { data } = await checked(query.order("assigned_at", { ascending: false }));
   return (data ?? []) as AssignmentRow[];
 }
 
@@ -147,15 +148,15 @@ export async function buildTeacherReport(
 ): Promise<TeacherReportData | null> {
   const supabase = await createClient();
   const [{ data: profile }, { data: membership }, assignments] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", teacherId).maybeSingle(),
-    supabase
+    checked(supabase.from("profiles").select("*").eq("id", teacherId).maybeSingle()),
+    checked(supabase
       .from("institution_memberships")
       .select("created_at")
       .eq("institution_id", institution.id)
       .eq("user_id", teacherId)
       .eq("status", "active")
       .eq("role", "teacher")
-      .maybeSingle(),
+      .maybeSingle()),
     getAssignments(institution.id, { userId: teacherId }),
   ]);
   const teacher = profile as Profile | null;
@@ -163,12 +164,12 @@ export async function buildTeacherReport(
 
   const courseIds = assignments.map((a) => a.course_id);
   const [{ data: enrollments }, { data: certificates }] = await Promise.all([
-    courseIds.length
+    checked(courseIds.length
       ? supabase.from("enrollments").select("course_id, status, started_at, last_activity_at").eq("user_id", teacherId).in("course_id", courseIds)
-      : Promise.resolve({ data: [] }),
-    courseIds.length
+      : Promise.resolve({ data: [] })),
+    checked(courseIds.length
       ? supabase.from("certificates").select("course_id, certificate_number, issued_at, revoked_at").eq("user_id", teacherId).in("course_id", courseIds)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [] })),
   ]);
 
   type Enr = { course_id: string; status: string; started_at: string | null; last_activity_at: string | null };
@@ -220,19 +221,19 @@ export async function buildTeacherReport(
 
 export async function getDepartments(institutionId: string) {
   const supabase = await createClient();
-  const { data } = await supabase.from("enterprise_departments").select("id, name").eq("institution_id", institutionId).order("name");
+  const { data } = await checked(supabase.from("enterprise_departments").select("id, name").eq("institution_id", institutionId).order("name"));
   return (data ?? []) as Array<{ id: string; name: string }>;
 }
 
 /** Active employees with their service (company administrators only, through RLS). */
 export async function getMembersWithDepartments(institutionId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("institution_memberships")
     .select("user_id, department_id, profile:profiles!institution_memberships_user_id_fkey(full_name, email)")
     .eq("institution_id", institutionId)
     .eq("role", "teacher")
-    .eq("status", "active");
+    .eq("status", "active"));
   return ((data ?? []) as unknown as Array<{ user_id: string; department_id: string | null; profile: { full_name: string | null; email: string } | null }>).sort((a, b) =>
     (a.profile?.full_name || a.profile?.email || "").localeCompare(b.profile?.full_name || b.profile?.email || "", "fr"),
   );

@@ -87,7 +87,9 @@ export async function verifyPdfUploads(
   }
 
   const storage = createAdminClient().storage.from(bucket);
-  const verified: VerifiedDocument[] = [];
+  // Every document is checked before any is moved: a refused one leaves the
+  // others where the form expects them, so the person can send again.
+  const checked: Array<{ doc: (typeof parsed)[number]; size: number }> = [];
   for (const doc of parsed) {
     const { data: blob, error } = await storage.download(doc.path);
     if (error || !blob) return { ok: false, state: rejectDocument(doc.path, `Le document « ${doc.name} » est introuvable. Ajoutez-le à nouveau.`) };
@@ -99,12 +101,26 @@ export async function verifyPdfUploads(
         state: rejectDocument(doc.path, `« ${doc.name} » n’est pas un document PDF valide : il a été retiré. Vous pouvez envoyer le formulaire sans lui ou joindre un autre PDF.`),
       };
     }
+    checked.push({ doc, size: blob.size });
+  }
+
+  const verified: VerifiedDocument[] = [];
+  const moves: Array<{ from: string; to: string }> = [];
+  for (const { doc, size } of checked) {
     // The upload's own folder id keeps two files with the same name apart.
     const [, upload, name] = doc.path.split("/");
     const target = `${folder}/${recordId}/${upload!.slice(-12)}-${name}`;
     const moved = await storage.move(doc.path, target);
-    if (moved.error) return { ok: false, state: { ok: false, message: "Les documents n’ont pas pu être enregistrés. Réessayez." } };
-    verified.push({ path: target, name: doc.name.slice(0, 200), mime: DOCUMENT_MIME, size: blob.size });
+    if (moved.error) {
+      // Put back what was already moved, so a new attempt finds every file.
+      for (const m of moves) {
+        const back = await storage.move(m.to, m.from);
+        if (back.error) console.error(`[${bucket}] document not restored`, back.error.message, m.to);
+      }
+      return { ok: false, state: { ok: false, message: "Les documents n’ont pas pu être enregistrés. Réessayez." } };
+    }
+    moves.push({ from: doc.path, to: target });
+    verified.push({ path: target, name: doc.name.slice(0, 200), mime: DOCUMENT_MIME, size });
   }
   return { ok: true, documents: verified };
 }

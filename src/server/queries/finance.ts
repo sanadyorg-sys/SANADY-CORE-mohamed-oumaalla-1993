@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { CostCategory, RevenueCategory } from "@/lib/enterprise";
+import { checked } from "@/lib/supabase/checked";
 
 /**
  * SANADY Enterprise, phase E6. Reads go through RLS: the enterprise
@@ -26,11 +27,11 @@ export interface InvoiceRow {
 
 export async function contractInvoices(contractId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("enterprise_invoices")
     .select("*, payments:enterprise_payments(id, amount, received_on, method, bank_reference, confirmed_at, recorded_by, confirmer:profiles!enterprise_payments_confirmed_by_fkey(full_name, email))")
     .eq("contract_id", contractId)
-    .order("issued_on", { ascending: false });
+    .order("issued_on", { ascending: false }));
   return (data ?? []) as unknown as InvoiceRow[];
 }
 
@@ -53,24 +54,24 @@ export async function enterpriseFinance(from: string, to: string) {
 
 export async function listCosts(from: string, to: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("enterprise_costs")
     .select("id, category, description, amount, currency, incurred_on, is_estimate, contract:enterprise_contracts(id, reference)")
     .gte("incurred_on", from)
     .lte("incurred_on", to)
     .order("incurred_on", { ascending: false })
-    .limit(200);
+    .limit(200));
   return (data ?? []) as unknown as Array<{ id: string; category: CostCategory; description: string; amount: string; currency: string; incurred_on: string; is_estimate: boolean; contract: { id: string; reference: string } | null }>;
 }
 
 /** Payments recorded but not yet checked against the bank (four eyes). */
 export async function unconfirmedPayments() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("enterprise_payments")
     .select("id, amount, received_on, method, bank_reference, recorded_by, invoice:enterprise_invoices(external_reference, currency, contract:enterprise_contracts(id, reference))")
     .is("confirmed_at", null)
-    .order("received_on");
+    .order("received_on"));
   return (data ?? []) as unknown as Array<{
     id: string;
     amount: string;
@@ -89,13 +90,13 @@ export interface Relationships {
 
 export async function organizationRelationships(organizationId: string) {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("organization_relationships", { p_org: organizationId });
+  const { data } = await checked(supabase.rpc("organization_relationships", { p_org: organizationId }));
   return (data ?? null) as Relationships | null;
 }
 
 export async function contractOptions() {
   const supabase = await createClient();
-  const { data } = await supabase.from("enterprise_contracts").select("id, reference, title, currency").in("status", ["signed", "active", "renewal", "closed"]).order("reference");
+  const { data } = await checked(supabase.from("enterprise_contracts").select("id, reference, title, currency").in("status", ["signed", "active", "renewal", "closed"]).order("reference"));
   return (data ?? []) as Array<{ id: string; reference: string; title: string; currency: string }>;
 }
 
@@ -103,8 +104,8 @@ export async function contractOptions() {
 export async function financeMonthly(from: string, to: string) {
   const supabase = await createClient();
   const [{ data: invoices }, { data: payments }] = await Promise.all([
-    supabase.from("enterprise_invoices").select("amount, currency, issued_on").is("cancelled_at", null).gte("issued_on", from).lte("issued_on", to),
-    supabase.from("enterprise_payments").select("amount, received_on, invoice:enterprise_invoices!inner(currency)").gte("received_on", from).lte("received_on", to),
+    checked(supabase.from("enterprise_invoices").select("amount, currency, issued_on").is("cancelled_at", null).gte("issued_on", from).lte("issued_on", to)),
+    checked(supabase.from("enterprise_payments").select("amount, received_on, invoice:enterprise_invoices!inner(currency)").gte("received_on", from).lte("received_on", to)),
   ]);
   const out: Record<string, { invoiced: number[]; received: number[] }> = {};
   const slot = (cur: string) => (out[cur] ??= { invoiced: Array(12).fill(0), received: Array(12).fill(0) });

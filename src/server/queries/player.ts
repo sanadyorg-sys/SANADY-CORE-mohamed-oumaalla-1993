@@ -5,6 +5,7 @@ import type { Lesson, LessonResource, LessonState } from "@/lib/types";
 import type { LessonMedia } from "@/components/learning/lesson-experience";
 import { signedMediaUrl, videoSource } from "@/server/media";
 import { getCourseOutline, type CourseOutline } from "./learning";
+import { checked } from "@/lib/supabase/checked";
 
 export interface NavTarget {
   href: string;
@@ -38,12 +39,12 @@ export async function getPlayerData(
   { preview = false, basePath }: { preview?: boolean; basePath: string },
 ): Promise<PlayerData | { error: string } | null> {
   const supabase = await createClient();
-  const { data: lessonRow } = await supabase
+  const { data: lessonRow } = await checked(supabase
     .from("lessons")
     .select("*, module:modules(title)")
     .eq("id", lessonId)
     .eq("course_id", courseId)
-    .maybeSingle();
+    .maybeSingle());
   const lesson = lessonRow as (Lesson & { module: { title: string } | null }) | null;
   if (!lesson || lesson.archived_at) return null;
 

@@ -12,18 +12,19 @@ import { MEMBERSHIP_ROLES } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 import { setEmailNotifications } from "@/server/actions/profile";
 import { requireViewer } from "@/server/auth";
+import { checked } from "@/lib/supabase/checked";
 
 export const metadata: Metadata = { title: "Mon profil" };
 
 export default async function ProfilePage() {
   const viewer = await requireViewer();
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("institution_memberships")
     .select("id, role, created_at, consented_at, institution:institutions(id, name)")
     .eq("user_id", viewer.id)
     .eq("status", "active")
-    .order("created_at");
+    .order("created_at"));
   const memberships = (data ?? []) as unknown as Array<{
     id: string;
     role: "admin" | "teacher";

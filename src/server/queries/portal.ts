@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { checked } from "@/lib/supabase/checked";
 
 /**
  * Partner portal (partnerships phase 6). Partners never read tables: they
@@ -39,35 +40,35 @@ export async function portalOverview() {
 
 export async function portalEnabled() {
   const supabase = await createClient();
-  const { data } = await supabase.from("platform_settings").select("partner_portal_enabled").maybeSingle();
+  const { data } = await checked(supabase.from("platform_settings").select("partner_portal_enabled").maybeSingle());
   return Boolean((data as { partner_portal_enabled: boolean } | null)?.partner_portal_enabled);
 }
 
 export async function portalForOrganization(organizationId: string) {
   const supabase = await createClient();
   const [{ data: members }, { data: invitations }, { data: deliverables }, { data: messages }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("partner_portal_members")
       .select("id, granted_at, user:profiles!partner_portal_members_user_id_fkey(full_name, email)")
       .eq("organization_id", organizationId)
-      .is("revoked_at", null),
-    supabase
+      .is("revoked_at", null)),
+    checked(supabase
       .from("invitations")
       .select("id, email, expires_at, email_sent_at")
       .eq("partner_organization_id", organizationId)
       .is("accepted_at", null)
-      .is("revoked_at", null),
-    supabase
+      .is("revoked_at", null)),
+    checked(supabase
       .from("partner_deliverables")
       .select("id, title, description, status, review_comment, created_at, agreement:partnership_agreements(reference), docs:partnership_documents(id, file_name, file_size)")
       .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false }),
-    supabase
+      .order("created_at", { ascending: false })),
+    checked(supabase
       .from("partner_messages")
       .select("id, body, from_partner, created_at, author:profiles!partner_messages_author_id_fkey(full_name, email)")
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
-      .limit(50),
+      .limit(50)),
   ]);
   return {
     members: (members ?? []) as unknown as Array<{ id: string; granted_at: string; user: { full_name: string | null; email: string } | null }>,

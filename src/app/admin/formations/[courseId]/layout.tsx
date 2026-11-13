@@ -9,6 +9,7 @@ import { COURSE_STATUSES } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
 import type { Course } from "@/lib/types";
 import { requireStaff } from "@/server/auth";
+import { checked } from "@/lib/supabase/checked";
 
 type CourseHeader = Pick<Course, "id" | "title" | "status" | "updated_at" | "published_at"> & {
   submitted_at: string | null;
@@ -21,17 +22,17 @@ export default async function CourseEditorLayout(props: LayoutProps<"/admin/form
   const viewer = await requireStaff();
   const supabase = await createClient();
   const [{ data }, { count }, { data: trainerRow }, { data: projectRow }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("courses")
       .select("id, title, status, updated_at, published_at, submitted_at, review_comment, reviewed_at")
       .eq("id", courseId)
-      .maybeSingle(),
-    supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("course_id", courseId).eq("status", "active"),
-    viewer.isTrainer
+      .maybeSingle()),
+    checked(supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("course_id", courseId).eq("status", "active")),
+    checked(viewer.isTrainer
       ? supabase.from("course_trainers").select("id").eq("course_id", courseId).eq("user_id", viewer.id).maybeSingle()
-      : Promise.resolve({ data: { id: "staff" } }),
+      : Promise.resolve({ data: { id: "staff" } })),
     // Custom training for a company (SANADY Enterprise studio).
-    supabase.from("training_projects").select("id, reference, status, organization:partner_organizations(name)").eq("course_id", courseId).maybeSingle(),
+    checked(supabase.from("training_projects").select("id, reference, status, organization:partner_organizations(name)").eq("course_id", courseId).maybeSingle()),
   ]);
   const project = projectRow as unknown as { id: string; reference: string; status: string; organization: { name: string } | null } | null;
   const course = data as CourseHeader | null;

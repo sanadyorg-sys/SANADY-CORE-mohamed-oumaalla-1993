@@ -91,6 +91,26 @@ describe("access requests", () => {
     expect(await db.rpcError(admin, "resolve_access_request", [req!.id, "rejected", null])).toMatch(/not_found/);
   });
 
+  it("approves a teacher request together with its invitation, once", async () => {
+    const email = `salma.${uid()}@e.test`;
+    await db.rpc(null, "request_access", ["Salma", "Idrissi", email], "service_role");
+    const [req] = await db.sql<{ id: string }>(`select id from public.access_requests where email = $1`, [email]);
+    const teacher = await db.createUser(`t.${uid()}@e.test`);
+    expect(await db.rpcError(teacher, "approve_teacher_access_request", [req!.id, newToken().hash])).toMatch(/forbidden/);
+
+    const first = newToken();
+    const out = await db.rpc<{ invitation_id: string; email: string }>(admin, "approve_teacher_access_request", [req!.id, first.hash]);
+    expect(out.email).toBe(email);
+    // A second approval (another administrator, a double click) changes nothing:
+    // the link already sent stays valid.
+    expect(await db.rpcError(admin, "approve_teacher_access_request", [req!.id, newToken().hash])).toMatch(/not_found/);
+    const open = await db.sql<{ id: string; token_hash: string }>(
+      `select id, token_hash from public.invitations where email = $1 and revoked_at is null and accepted_at is null`, [email]);
+    expect(open).toEqual([{ id: out.invitation_id, token_hash: first.hash }]);
+    const [after] = await db.sql<{ status: string; invitation_id: string }>(`select status, invitation_id from public.access_requests where id = $1`, [req!.id]);
+    expect(after).toEqual({ status: "approved", invitation_id: out.invitation_id });
+  });
+
   it("records institution partnership requests, approvable without an invitation", async () => {
     const email = `direction.${uid()}@e.test`;
     await db.createUser(email);
@@ -98,5 +118,11 @@ describe("access requests", () => {
     const [req] = await db.sql<{ id: string; kind: string }>(`select id, kind from public.access_requests where email = $1`, [email]);
     expect(req!.kind).toBe("institution");
     await db.rpc(admin, "resolve_access_request", [req!.id, "approved", null]);
+    // Only a teacher request produces an invitation.
+    const again = `ecole.${uid()}@e.test`;
+    await db.createUser(again);
+    await db.rpc(null, "request_access", ["Nadia", "Berrada", again, null, null, "Lycée Test", "Rabat", "Partenariat", null, "institution"], "service_role");
+    const [inst] = await db.sql<{ id: string }>(`select id from public.access_requests where email = $1`, [again]);
+    expect(await db.rpcError(admin, "approve_teacher_access_request", [inst!.id, newToken().hash])).toMatch(/invalid_input/);
   });
 });

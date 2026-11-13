@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui/surface"
 import { createClient } from "@/lib/supabase/server";
 import type { Invitation } from "@/lib/types";
 import { requireSanadyAdmin } from "@/server/auth";
+import { checked } from "@/lib/supabase/checked";
 
 export const metadata: Metadata = { title: "Invitations" };
 
@@ -24,8 +25,8 @@ export default async function AdminInvitationsPage(props: PageProps<"/admin/invi
   if (etat === "acceptees") query = query.not("accepted_at", "is", null);
 
   const [{ data: invitations }, { data: institutions }] = await Promise.all([
-    query,
-    supabase.from("institutions").select("id, name").eq("status", "active").order("name"),
+    checked(query),
+    checked(supabase.from("institutions").select("id, name").eq("status", "active").order("name")),
   ]);
   const insts = (institutions ?? []) as Array<{ id: string; name: string }>;
 

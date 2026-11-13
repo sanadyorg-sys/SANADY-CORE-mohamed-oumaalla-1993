@@ -31,12 +31,17 @@ export async function runHousekeeping() {
     if (error) console.error(`[housekeeping] ${bucket} not removed`, error.message, JSON.stringify(paths));
     return !error;
   };
-  for (const d of (done ?? []) as Array<{ files: string[]; logo: string | null }>) {
-    for (let i = 0; i < d.files.length; i += 100) {
-      const batch = d.files.slice(i, i + 100);
-      if (await removeWithRetry("course-media", batch)) files += batch.length;
+  const removeAll = async (bucket: string, paths: string[]) => {
+    for (let i = 0; i < paths.length; i += 100) {
+      const batch = paths.slice(i, i + 100);
+      if (await removeWithRetry(bucket, batch)) files += batch.length;
       else filesFailed += batch.length;
     }
+  };
+  for (const d of (done ?? []) as Array<{ files: string[]; avatars?: string[]; logo: string | null }>) {
+    await removeAll("course-media", d.files);
+    // Profile photos of the accounts that existed only for this company.
+    await removeAll("avatars", d.avatars ?? []);
     if (d.logo && !(await removeWithRetry("enterprise-logos", [d.logo]))) filesFailed += 1;
   }
   const purged = await purgeExpiredRequests().catch((e) => {

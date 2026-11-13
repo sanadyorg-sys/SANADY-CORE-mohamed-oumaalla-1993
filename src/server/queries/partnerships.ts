@@ -14,6 +14,7 @@ import type {
   PublicOpportunity,
 } from "@/lib/partnerships";
 import type { Viewer } from "@/server/auth";
+import { checked } from "@/lib/supabase/checked";
 
 /** Reads go through RLS: only partnership staff (2FA) see these rows. */
 
@@ -45,13 +46,13 @@ export async function listApplications(filter: { status?: ApplicationStatus | "o
     const q = filter.q.replace(/[%_,()]/g, " ").trim();
     if (q) query = query.or(`org_name.ilike.%${q}%,reference.ilike.%${q}%,contact_name.ilike.%${q}%`);
   }
-  const { data } = await query;
+  const { data } = await checked(query);
   return (data ?? []) as ApplicationRow[];
 }
 
 export async function applicationCounts() {
   const supabase = await createClient();
-  const { data } = await supabase.from("partnership_applications").select("status");
+  const { data } = await checked(supabase.from("partnership_applications").select("status"));
   const counts: Record<string, number> = {};
   for (const r of (data ?? []) as Array<{ status: string }>) counts[r.status] = (counts[r.status] ?? 0) + 1;
   return counts;
@@ -77,18 +78,18 @@ export interface ApplicationDetail extends ApplicationRow {
 export async function getApplication(id: string) {
   const supabase = await createClient();
   const [{ data: app }, { data: docs }, { data: notes }, { data: history }] = await Promise.all([
-    supabase.from("partnership_applications").select("*, opportunity:partnership_opportunities(id, reference, title)").eq("id", id).maybeSingle(),
-    supabase.from("partnership_documents").select("id, file_name, file_size, created_at").eq("application_id", id).order("created_at"),
-    supabase
+    checked(supabase.from("partnership_applications").select("*, opportunity:partnership_opportunities(id, reference, title)").eq("id", id).maybeSingle()),
+    checked(supabase.from("partnership_documents").select("id, file_name, file_size, created_at").eq("application_id", id).order("created_at")),
+    checked(supabase
       .from("partnership_notes")
       .select("id, body, created_at, author:profiles!partnership_notes_author_id_fkey(full_name, email)")
       .eq("application_id", id)
-      .order("created_at", { ascending: false }),
-    supabase
+      .order("created_at", { ascending: false })),
+    checked(supabase
       .from("partnership_status_history")
       .select("id, from_status, to_status, note, created_at, by:profiles!partnership_status_history_changed_by_fkey(full_name, email)")
       .eq("application_id", id)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })),
   ]);
   if (!app) return null;
   return {
@@ -143,7 +144,7 @@ export async function listOrganizations(filter: { status?: string; field?: strin
     const q = filter.q.replace(/[%_,()]/g, " ").trim();
     if (q) query = query.ilike("name", `%${q}%`);
   }
-  const { data } = await query;
+  const { data } = await checked(query);
   return (data ?? []) as unknown as OrganizationRow[];
 }
 
@@ -173,29 +174,29 @@ export interface Task {
 export async function getOrganization(id: string) {
   const supabase = await createClient();
   const [{ data: org }, { data: contacts }, { data: notes }, { data: history }, { data: tasks }, { data: applications }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("partner_organizations")
       .select("*, assignee:profiles!partner_organizations_assigned_to_fkey(full_name, email)")
       .eq("id", id)
-      .maybeSingle(),
-    supabase.from("partner_contacts").select("id, full_name, job_title, email, phone, is_primary").eq("organization_id", id).order("is_primary", { ascending: false }).order("full_name"),
-    supabase
+      .maybeSingle()),
+    checked(supabase.from("partner_contacts").select("id, full_name, job_title, email, phone, is_primary").eq("organization_id", id).order("is_primary", { ascending: false }).order("full_name")),
+    checked(supabase
       .from("partnership_notes")
       .select("id, body, created_at, author:profiles!partnership_notes_author_id_fkey(full_name, email)")
       .eq("organization_id", id)
-      .order("created_at", { ascending: false }),
-    supabase
+      .order("created_at", { ascending: false })),
+    checked(supabase
       .from("partnership_status_history")
       .select("id, from_status, to_status, note, created_at, by:profiles!partnership_status_history_changed_by_fkey(full_name, email)")
       .eq("organization_id", id)
-      .order("created_at", { ascending: false }),
-    supabase
+      .order("created_at", { ascending: false })),
+    checked(supabase
       .from("partnership_tasks")
       .select("id, title, due_on, done_at, organization_id, assignee:profiles!partnership_tasks_assigned_to_fkey(id, full_name, email)")
       .eq("organization_id", id)
       .order("done_at", { ascending: true, nullsFirst: true })
-      .order("due_on", { ascending: true, nullsFirst: false }),
-    supabase.from("partnership_applications").select("id, reference, created_at, status").eq("organization_id", id).order("created_at"),
+      .order("due_on", { ascending: true, nullsFirst: false })),
+    checked(supabase.from("partnership_applications").select("id, reference, created_at, status").eq("organization_id", id).order("created_at")),
   ]);
   if (!org) return null;
   return {
@@ -211,22 +212,22 @@ export async function getOrganization(id: string) {
 /** Open follow-up tasks across organisations (inbox side panel). */
 export async function openTasks(limit = 8) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("partnership_tasks")
     .select("id, title, due_on, done_at, organization_id, assignee:profiles!partnership_tasks_assigned_to_fkey(id, full_name, email), organization:partner_organizations(name)")
     .is("done_at", null)
     .order("due_on", { ascending: true, nullsFirst: false })
-    .limit(limit);
+    .limit(limit));
   return (data ?? []) as unknown as Array<Task & { organization: { name: string } | null }>;
 }
 
 /** People a task can be assigned to: SANADY admins and partnership staff. */
 export async function partnershipTeam() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("platform_roles")
     .select("role, user:profiles!platform_roles_user_id_fkey(id, full_name, email, status)")
-    .in("role", ["sanady_admin", "partnership_coordinator", "partnership_manager"]);
+    .in("role", ["sanady_admin", "partnership_coordinator", "partnership_manager"]));
   return ((data ?? []) as unknown as Array<{ role: string; user: { id: string; full_name: string | null; email: string; status: string } }>)
     .filter((r) => r.user?.status === "active")
     .map((r) => ({ ...r.user, role: r.role }));
@@ -235,7 +236,7 @@ export async function partnershipTeam() {
 /** What the current person may do in the pipeline (the database re-checks). */
 export async function pipelineActor(viewer: Viewer) {
   const supabase = await createClient();
-  const { data } = await supabase.from("partnership_signatories").select("id").eq("user_id", viewer.id).is("revoked_at", null).maybeSingle();
+  const { data } = await checked(supabase.from("partnership_signatories").select("id").eq("user_id", viewer.id).is("revoked_at", null).maybeSingle());
   return {
     staff: viewer.isSanadyAdmin || viewer.platformRole === "partnership_coordinator" || viewer.platformRole === "partnership_manager",
     manager: viewer.platformRole === "partnership_manager",
@@ -245,11 +246,11 @@ export async function pipelineActor(viewer: Viewer) {
 
 export async function listSignatories() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("partnership_signatories")
     .select("granted_at, user:profiles!partnership_signatories_user_id_fkey(id, full_name, email), granter:profiles!partnership_signatories_granted_by_fkey(full_name, email)")
     .is("revoked_at", null)
-    .order("granted_at");
+    .order("granted_at"));
   return (data ?? []) as unknown as Array<{
     granted_at: string;
     user: { id: string; full_name: string | null; email: string };
@@ -264,19 +265,19 @@ export async function listSignatories() {
 export async function purgeExpiredApplications() {
   const supabase = await createClient();
   const cutoff = new Date(Date.now() - 730 * 24 * 3600 * 1000).toISOString();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("partnership_applications")
     .select("id")
     .in("status", ["declined", "withdrawn", "spam"])
     .lt("updated_at", cutoff)
-    .limit(50);
+    .limit(50));
   const ids = ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
   if (!ids.length) return 0;
   const admin = createAdminClient();
-  const { data: docs } = await admin.from("partnership_documents").select("storage_path").in("application_id", ids);
+  const { data: docs } = await checked(admin.from("partnership_documents").select("storage_path").in("application_id", ids));
   const paths = ((docs ?? []) as Array<{ storage_path: string }>).map((d) => d.storage_path);
   if (paths.length) await admin.storage.from("partnerships").remove(paths);
-  const { data: n } = await admin.rpc("purge_partnership_applications", { p_ids: ids });
+  const { data: n } = await checked(admin.rpc("purge_partnership_applications", { p_ids: ids }));
   return (n as number) ?? 0;
 }
 
@@ -307,7 +308,7 @@ export async function listNeeds(filter: { status?: string; field?: string }) {
     .limit(300);
   if (filter.status) query = query.eq("status", filter.status);
   if (filter.field) query = query.eq("intervention_field", filter.field);
-  const { data } = await query;
+  const { data } = await checked(query);
   return (data ?? []) as unknown as NeedRow[];
 }
 
@@ -327,20 +328,20 @@ export interface NeedDetail extends NeedRow {
 export async function getNeed(id: string) {
   const supabase = await createClient();
   const [{ data: need }, { data: notes }, { data: history }, { data: opportunities }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("educational_needs")
       .select(
         "*, institution:institutions(name), responsible:profiles!educational_needs_responsible_id_fkey(full_name, email), decider:profiles!educational_needs_decided_by_fkey(full_name, email)",
       )
       .eq("id", id)
-      .maybeSingle(),
-    supabase.from("partnership_notes").select("id, body, created_at, author:profiles!partnership_notes_author_id_fkey(full_name, email)").eq("need_id", id).order("created_at", { ascending: false }),
-    supabase
+      .maybeSingle()),
+    checked(supabase.from("partnership_notes").select("id, body, created_at, author:profiles!partnership_notes_author_id_fkey(full_name, email)").eq("need_id", id).order("created_at", { ascending: false })),
+    checked(supabase
       .from("partnership_status_history")
       .select("id, from_status, to_status, note, created_at, by:profiles!partnership_status_history_changed_by_fkey(full_name, email)")
       .eq("need_id", id)
-      .order("created_at", { ascending: false }),
-    supabase.from("partnership_opportunities").select("id, reference, title, status").eq("need_id", id).order("created_at"),
+      .order("created_at", { ascending: false })),
+    checked(supabase.from("partnership_opportunities").select("id, reference, title, status").eq("need_id", id).order("created_at")),
   ]);
   if (!need) return null;
   return {
@@ -372,7 +373,7 @@ export async function listOpportunities(filter: { status?: string; field?: strin
     .limit(300);
   if (filter.status) query = query.eq("status", filter.status);
   if (filter.field) query = query.eq("intervention_field", filter.field);
-  const { data } = await query;
+  const { data } = await checked(query);
   return (data ?? []) as OpportunityRow[];
 }
 
@@ -399,18 +400,18 @@ export interface OpportunityDetail extends OpportunityRow {
 export async function getOpportunity(id: string) {
   const supabase = await createClient();
   const [{ data: opp }, { data: notes }, { data: history }, { data: applications }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("partnership_opportunities")
       .select("*, approver:profiles!partnership_opportunities_approved_by_fkey(full_name, email), need:educational_needs(reference, title)")
       .eq("id", id)
-      .maybeSingle(),
-    supabase.from("partnership_notes").select("id, body, created_at, author:profiles!partnership_notes_author_id_fkey(full_name, email)").eq("opportunity_id", id).order("created_at", { ascending: false }),
-    supabase
+      .maybeSingle()),
+    checked(supabase.from("partnership_notes").select("id, body, created_at, author:profiles!partnership_notes_author_id_fkey(full_name, email)").eq("opportunity_id", id).order("created_at", { ascending: false })),
+    checked(supabase
       .from("partnership_status_history")
       .select("id, from_status, to_status, note, created_at, by:profiles!partnership_status_history_changed_by_fkey(full_name, email)")
       .eq("opportunity_id", id)
-      .order("created_at", { ascending: false }),
-    supabase.from("partnership_applications").select("id, reference, org_name, status, created_at").eq("opportunity_id", id).order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })),
+    checked(supabase.from("partnership_applications").select("id, reference, org_name, status, created_at").eq("opportunity_id", id).order("created_at", { ascending: false })),
   ]);
   if (!opp) return null;
   return {
@@ -424,7 +425,7 @@ export async function getOpportunity(id: string) {
 /** Active institutions (a need may concern one school). */
 export async function institutionsForNeeds() {
   const supabase = await createClient();
-  const { data } = await supabase.from("institutions").select("id, name").eq("status", "active").order("name");
+  const { data } = await checked(supabase.from("institutions").select("id, name").eq("status", "active").order("name"));
   return (data ?? []) as Array<{ id: string; name: string }>;
 }
 

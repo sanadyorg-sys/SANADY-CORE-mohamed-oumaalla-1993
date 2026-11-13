@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { TaskKind, TaskStatus, TrainingChecklist, TrainingStatus } from "@/lib/enterprise";
 import type { Viewer } from "@/server/auth";
 import type { HistoryEntry } from "@/server/queries/partnerships";
+import { checked } from "@/lib/supabase/checked";
 
 /**
  * Custom training production studio (SANADY Enterprise, phase E4). Reads go
@@ -31,7 +32,7 @@ export async function listProjects(filter: { status?: string; organization?: str
   let q = supabase.from("training_projects").select(ROW).order("updated_at", { ascending: false }).limit(200);
   if (filter.status) q = q.eq("status", filter.status);
   if (filter.organization) q = q.eq("organization_id", filter.organization);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as unknown as ProjectRow[];
 }
 
@@ -78,7 +79,7 @@ export interface TrainingReview {
 
 export async function getProject(id: string) {
   const supabase = await createClient();
-  const { data: p } = await supabase
+  const { data: p } = await checked(supabase
     .from("training_projects")
     .select(
       `*, organization:partner_organizations(id, name), lead:profiles!training_projects_lead_id_fkey(full_name, email),
@@ -86,34 +87,34 @@ export async function getProject(id: string) {
        tenant:enterprise_tenants(id, display_name, status, institution_id), course:courses(id, title, status)`,
     )
     .eq("id", id)
-    .maybeSingle();
+    .maybeSingle());
   if (!p) return null;
   const project = p as unknown as ProjectDetail;
   const [{ data: outline }, { data: tasks }, { data: reviews }, { data: versions }, { data: history }, { data: checklist }, { data: trainers }] = await Promise.all([
-    supabase.from("training_outline").select("id, position, title, description").eq("project_id", id).order("position"),
-    supabase
+    checked(supabase.from("training_outline").select("id, position, title, description").eq("project_id", id).order("position")),
+    checked(supabase
       .from("training_tasks")
       .select("id, kind, title, status, due_on, assigned_to, assignee:profiles!training_tasks_assigned_to_fkey(id, full_name, email)")
       .eq("project_id", id)
       .order("status")
-      .order("due_on", { ascending: true, nullsFirst: false }),
-    supabase
+      .order("due_on", { ascending: true, nullsFirst: false })),
+    checked(supabase
       .from("training_reviews")
       .select("id, kind, decision, comment, version, created_at, reviewer:profiles!training_reviews_reviewer_id_fkey(full_name, email)")
       .eq("project_id", id)
-      .order("created_at", { ascending: false }),
-    supabase
+      .order("created_at", { ascending: false })),
+    checked(supabase
       .from("training_versions")
       .select("id, version, approved_at, snapshot, approver:profiles!training_versions_approved_by_fkey(full_name, email)")
       .eq("project_id", id)
-      .order("version", { ascending: false }),
-    supabase
+      .order("version", { ascending: false })),
+    checked(supabase
       .from("enterprise_history")
       .select("id, from_status, to_status, note, created_at, by:profiles!enterprise_history_changed_by_fkey(full_name, email)")
       .eq("project_id", id)
-      .order("created_at", { ascending: false }),
-    supabase.rpc("training_checklist", { p_project: id }),
-    supabase.rpc("project_trainers", { p_project: id }),
+      .order("created_at", { ascending: false })),
+    checked(supabase.rpc("training_checklist", { p_project: id })),
+    checked(supabase.rpc("project_trainers", { p_project: id })),
   ]);
   return {
     project,
@@ -136,14 +137,14 @@ export async function getProject(id: string) {
 /** People who can lead a project or receive production tasks. */
 export async function productionTeam() {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("production_team");
+  const { data } = await checked(supabase.rpc("production_team"));
   return (data ?? []) as Array<{ id: string; full_name: string | null; email: string; role: string }>;
 }
 
 /** What the current person may do in the studio (the database re-checks). */
 export async function studioActor(viewer: Viewer) {
   const supabase = await createClient();
-  const { data } = await supabase.from("partnership_signatories").select("id").eq("user_id", viewer.id).is("revoked_at", null).maybeSingle();
+  const { data } = await checked(supabase.from("partnership_signatories").select("id").eq("user_id", viewer.id).is("revoked_at", null).maybeSingle());
   return {
     manage: viewer.isSanadyAdmin || viewer.platformRole === "enterprise_manager" || viewer.platformRole === "production_manager",
     pedagogy: viewer.isCourseStaff,
@@ -154,12 +155,12 @@ export async function studioActor(viewer: Viewer) {
 /** Production tasks assigned to the current person (trainers' « Studio » page). */
 export async function myTrainingTasks(userId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("training_tasks")
     .select("id, kind, title, status, due_on, project:training_projects(id, reference, title)")
     .eq("assigned_to", userId)
     .neq("status", "done")
-    .order("due_on", { ascending: true, nullsFirst: false });
+    .order("due_on", { ascending: true, nullsFirst: false }));
   return (data ?? []) as unknown as Array<{ id: string; kind: TaskKind; title: string; status: TaskStatus; due_on: string | null; project: { id: string; reference: string; title: string } | null }>;
 }
 
@@ -169,7 +170,7 @@ type VersionSnapshot = { title?: string; modules?: Array<{ lessons?: unknown[]; 
 /** Projects of a company workspace, as its administrator sees them. */
 export async function workspaceProjects(institutionId: string) {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("workspace_training_projects", { p_institution: institutionId });
+  const { data } = await checked(supabase.rpc("workspace_training_projects", { p_institution: institutionId }));
   return (data ?? []) as Array<{
     id: string;
     reference: string;
@@ -189,8 +190,8 @@ export async function workspaceProjects(institutionId: string) {
 export async function projectFormOptions(organizationId: string) {
   const supabase = await createClient();
   const [{ data: tenants }, { data: proposals }] = await Promise.all([
-    supabase.from("enterprise_tenants").select("id, display_name, status").eq("organization_id", organizationId).not("status", "in", "(closed,cancelled)"),
-    supabase.from("enterprise_proposals").select("id, reference, title").eq("organization_id", organizationId).in("status", ["approved", "sent", "accepted"]),
+    checked(supabase.from("enterprise_tenants").select("id, display_name, status").eq("organization_id", organizationId).not("status", "in", "(closed,cancelled)")),
+    checked(supabase.from("enterprise_proposals").select("id, reference, title").eq("organization_id", organizationId).in("status", ["approved", "sent", "accepted"])),
   ]);
   return {
     tenants: ((tenants ?? []) as Array<{ id: string; display_name: string; status: string }>).map((t) => ({ id: t.id, label: t.display_name })),

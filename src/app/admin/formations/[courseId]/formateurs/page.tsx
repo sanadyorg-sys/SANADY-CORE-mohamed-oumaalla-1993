@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { removeCourseTrainer } from "@/server/actions/courses";
 import { requireStaff } from "@/server/auth";
+import { checked } from "@/lib/supabase/checked";
 
 export const metadata: Metadata = { title: "Formateurs" };
 
@@ -19,8 +20,8 @@ export default async function CourseTrainersPage(props: PageProps<"/admin/format
   await requireStaff(["admin", "manager"]);
   const supabase = await createClient();
   const [{ data: assigned }, { data: trainers }] = await Promise.all([
-    supabase.from("course_trainers").select("assigned_at, trainer:profiles!course_trainers_user_id_fkey(id, full_name, email, job_title)").eq("course_id", courseId),
-    supabase.from("platform_roles").select("profile:profiles!platform_roles_user_id_fkey(id, full_name, email, job_title)").eq("role", "trainer"),
+    checked(supabase.from("course_trainers").select("assigned_at, trainer:profiles!course_trainers_user_id_fkey(id, full_name, email, job_title)").eq("course_id", courseId)),
+    checked(supabase.from("platform_roles").select("profile:profiles!platform_roles_user_id_fkey(id, full_name, email, job_title)").eq("role", "trainer")),
   ]);
   const current = ((assigned ?? []) as unknown as Array<{ assigned_at: string; trainer: Person | null }>).filter((a) => a.trainer);
   const currentIds = new Set(current.map((a) => a.trainer!.id));

@@ -3,6 +3,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { foldAccents } from "@/server/queries/library";
 import { NEWS_PAGE_SIZE, type NewsArticlePage, type NewsArticleRow, type NewsCard, type NewsCategory, type NewsStatus } from "@/lib/news";
+import { checked } from "@/lib/supabase/checked";
 
 /* ─── Public reading (anonymous visitors included) ─────────────────────── */
 // Both go through security-definer functions that apply the audience rules
@@ -109,9 +110,9 @@ export interface AdminNewsArticle extends NewsArticleRow {
 export async function getAdminNewsArticle(id: string) {
   const supabase = await createClient();
   const [{ data: article }, { data: institutions }, { data: courses }] = await Promise.all([
-    supabase.from("news_articles").select("*").eq("id", id).maybeSingle(),
-    supabase.from("news_article_institutions").select("institution_id").eq("article_id", id),
-    supabase.from("news_article_courses").select("course_id, position").eq("article_id", id).order("position"),
+    checked(supabase.from("news_articles").select("*").eq("id", id).maybeSingle()),
+    checked(supabase.from("news_article_institutions").select("institution_id").eq("article_id", id)),
+    checked(supabase.from("news_article_courses").select("course_id, position").eq("article_id", id).order("position")),
   ]);
   if (!article) return null;
   return {
@@ -125,8 +126,8 @@ export async function getAdminNewsArticle(id: string) {
 export async function newsFormOptions() {
   const supabase = await createClient();
   const [{ data: institutions }, { data: courses }] = await Promise.all([
-    supabase.from("institutions").select("id, name, city").neq("kind", "enterprise").eq("status", "active").order("name").limit(2000),
-    supabase.from("courses").select("id, title, status, public_listing").in("status", ["published"]).order("title").limit(1000),
+    checked(supabase.from("institutions").select("id, name, city").neq("kind", "enterprise").eq("status", "active").order("name").limit(2000)),
+    checked(supabase.from("courses").select("id, title, status, public_listing").in("status", ["published"]).order("title").limit(1000)),
   ]);
   return {
     institutions: (institutions ?? []) as Array<{ id: string; name: string; city: string | null }>,
@@ -150,7 +151,7 @@ export async function getNewsStats(id: string, days = 30) {
 export async function getNewsViewTotals(ids: string[]) {
   if (!ids.length) return new Map<string, number>();
   const supabase = await createClient();
-  const { data } = await supabase.from("news_daily_stats").select("article_id, views").in("article_id", ids);
+  const { data } = await checked(supabase.from("news_daily_stats").select("article_id, views").in("article_id", ids));
   const totals = new Map<string, number>();
   for (const r of (data ?? []) as Array<{ article_id: string; views: number }>) totals.set(r.article_id, (totals.get(r.article_id) ?? 0) + r.views);
   return totals;

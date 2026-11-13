@@ -161,6 +161,26 @@ describe("employees and limits (brief §10)", () => {
     expect(usage).toMatchObject({ employees: 1, invited: 1, admins: 1 });
   });
 
+  it("keep the seat an invitation holds: nobody else can take it", async () => {
+    const { inst, director } = await activeTenant(); // max 2
+    const former = await join(director, "institution_teacher", inst);
+    await db.sql(`update public.institution_memberships set status = 'revoked', revoked_at = now() where institution_id = $1 and user_id = $2`, [inst, former]);
+    // Two invitations now hold the two seats.
+    const invited = [1, 2].map(() => ({ email: `seat.${uid()}@client.test`, token: newToken() }));
+    for (const i of invited) await db.rpc(director, "create_invitation", ["institution_teacher", i.email, inst, i.token.hash]);
+    // Bringing the former employee back would take an invited person's seat.
+    await expect(
+      db.sql(`update public.institution_memberships set status = 'active', revoked_at = null where institution_id = $1 and user_id = $2`, [inst, former]),
+    ).rejects.toThrow(/tenant_full/);
+    // Both invited people get in.
+    for (const i of invited) {
+      const user = await db.createUser(i.email);
+      await db.rpc(null, "accept_invitation", [i.token.hash, user, true], "service_role");
+    }
+    const usage = await db.rpc<{ employees: number; invited: number }>(manager, "tenant_usage", [(await tenantOf(inst))]);
+    expect(usage).toMatchObject({ employees: 2, invited: 0 });
+  });
+
   it("are grouped in departments chosen at invitation", async () => {
     const { inst, director } = await activeTenant();
     const dep = await db.rpc<string>(director, "save_department", [null, inst, "Production"]);

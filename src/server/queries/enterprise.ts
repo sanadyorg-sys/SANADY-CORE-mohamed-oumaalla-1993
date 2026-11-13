@@ -5,6 +5,7 @@ import type { EnterpriseService, EnterpriseStage, LineCategory, ProposalStatus, 
 import type { OrgType, PipelineStatus } from "@/lib/partnerships";
 import type { Viewer } from "@/server/auth";
 import type { Contact, HistoryEntry, Note, Task } from "@/server/queries/partnerships";
+import { checked } from "@/lib/supabase/checked";
 
 /** Reads go through RLS: only enterprise staff (2FA) see these rows. */
 
@@ -35,13 +36,13 @@ export async function listRequests(filter: { status?: RequestStatus | "open"; se
   if (filter.status === "open") q = q.in("status", ["received", "qualified"]);
   else if (filter.status) q = q.eq("status", filter.status);
   if (filter.service) q = q.eq("service", filter.service);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as RequestRow[];
 }
 
 export async function requestCounts() {
   const supabase = await createClient();
-  const { data } = await supabase.from("enterprise_requests").select("status");
+  const { data } = await checked(supabase.from("enterprise_requests").select("status"));
   const counts: Record<string, number> = {};
   for (const r of (data ?? []) as Array<{ status: string }>) counts[r.status] = (counts[r.status] ?? 0) + 1;
   return counts;
@@ -72,10 +73,10 @@ const HISTORY_SELECT = "id, from_status, to_status, note, created_at, by:profile
 export async function getRequest(id: string) {
   const supabase = await createClient();
   const [{ data: req }, { data: docs }, { data: notes }, { data: history }] = await Promise.all([
-    supabase.from("enterprise_requests").select("*").eq("id", id).maybeSingle(),
-    supabase.from("enterprise_documents").select("id, file_name, file_size").eq("request_id", id).order("created_at"),
-    supabase.from("enterprise_notes").select(NOTE_SELECT).eq("request_id", id).order("created_at", { ascending: false }),
-    supabase.from("enterprise_history").select(HISTORY_SELECT).eq("request_id", id).order("created_at", { ascending: false }),
+    checked(supabase.from("enterprise_requests").select("*").eq("id", id).maybeSingle()),
+    checked(supabase.from("enterprise_documents").select("id, file_name, file_size").eq("request_id", id).order("created_at")),
+    checked(supabase.from("enterprise_notes").select(NOTE_SELECT).eq("request_id", id).order("created_at", { ascending: false })),
+    checked(supabase.from("enterprise_history").select(HISTORY_SELECT).eq("request_id", id).order("created_at", { ascending: false })),
   ]);
   if (!req) return null;
   return {
@@ -116,7 +117,7 @@ export async function listClients(filter: { stage?: string }) {
     .order("updated_at", { ascending: false })
     .limit(500);
   if (filter.stage) q = q.eq("enterprise_status", filter.stage);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as unknown as ClientRow[];
 }
 
@@ -143,29 +144,29 @@ export async function listProposals(filter: { status?: string; organization?: st
     .limit(300);
   if (filter.status) q = q.eq("status", filter.status);
   if (filter.organization) q = q.eq("organization_id", filter.organization);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as unknown as ProposalRow[];
 }
 
 export async function getClient(id: string) {
   const supabase = await createClient();
   const [{ data: org }, { data: contacts }, { data: notes }, { data: history }, { data: tasks }, { data: requests }, proposals] = await Promise.all([
-    supabase
+    checked(supabase
       .from("partner_organizations")
       .select("*, manager:profiles!partner_organizations_enterprise_manager_id_fkey(full_name, email)")
       .eq("id", id)
       .not("enterprise_status", "is", null)
-      .maybeSingle(),
-    supabase.from("partner_contacts").select("id, full_name, job_title, email, phone, is_primary").eq("organization_id", id).order("is_primary", { ascending: false }),
-    supabase.from("enterprise_notes").select(NOTE_SELECT).eq("organization_id", id).order("created_at", { ascending: false }),
-    supabase.from("enterprise_history").select(HISTORY_SELECT).eq("organization_id", id).order("created_at", { ascending: false }),
-    supabase
+      .maybeSingle()),
+    checked(supabase.from("partner_contacts").select("id, full_name, job_title, email, phone, is_primary").eq("organization_id", id).order("is_primary", { ascending: false })),
+    checked(supabase.from("enterprise_notes").select(NOTE_SELECT).eq("organization_id", id).order("created_at", { ascending: false })),
+    checked(supabase.from("enterprise_history").select(HISTORY_SELECT).eq("organization_id", id).order("created_at", { ascending: false })),
+    checked(supabase
       .from("enterprise_tasks")
       .select("id, title, due_on, done_at, organization_id, assignee:profiles!enterprise_tasks_assigned_to_fkey(id, full_name, email)")
       .eq("organization_id", id)
       .order("done_at", { ascending: true, nullsFirst: true })
-      .order("due_on", { ascending: true, nullsFirst: false }),
-    supabase.from("enterprise_requests").select("id, reference, service, status, created_at").eq("organization_id", id).order("created_at"),
+      .order("due_on", { ascending: true, nullsFirst: false })),
+    checked(supabase.from("enterprise_requests").select("id, reference, service, status, created_at").eq("organization_id", id).order("created_at")),
     listProposals({ organization: id }),
   ]);
   if (!org) return null;
@@ -190,14 +191,14 @@ export async function getClient(id: string) {
 export async function getProposal(id: string) {
   const supabase = await createClient();
   const [{ data: p }, { data: lines }, { data: notes }, { data: history }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("enterprise_proposals")
       .select("*, organization:partner_organizations(id, name), approver:profiles!enterprise_proposals_approved_by_fkey(full_name, email), request:enterprise_requests(id, reference)")
       .eq("id", id)
-      .maybeSingle(),
-    supabase.from("enterprise_proposal_lines").select("id, category, label, quantity, unit, unit_price").eq("proposal_id", id).order("position"),
-    supabase.from("enterprise_notes").select(NOTE_SELECT).eq("proposal_id", id).order("created_at", { ascending: false }),
-    supabase.from("enterprise_history").select(HISTORY_SELECT).eq("proposal_id", id).order("created_at", { ascending: false }),
+      .maybeSingle()),
+    checked(supabase.from("enterprise_proposal_lines").select("id, category, label, quantity, unit, unit_price").eq("proposal_id", id).order("position")),
+    checked(supabase.from("enterprise_notes").select(NOTE_SELECT).eq("proposal_id", id).order("created_at", { ascending: false })),
+    checked(supabase.from("enterprise_history").select(HISTORY_SELECT).eq("proposal_id", id).order("created_at", { ascending: false })),
   ]);
   if (!p) return null;
   return {
@@ -228,22 +229,22 @@ export async function getProposal(id: string) {
 /** Open enterprise follow-ups (inbox side panel). */
 export async function openEnterpriseTasks(limit = 8) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("enterprise_tasks")
     .select("id, title, due_on, done_at, organization_id, assignee:profiles!enterprise_tasks_assigned_to_fkey(id, full_name, email), organization:partner_organizations(name)")
     .is("done_at", null)
     .order("due_on", { ascending: true, nullsFirst: false })
-    .limit(limit);
+    .limit(limit));
   return (data ?? []) as unknown as Array<Task & { organization: { name: string } | null }>;
 }
 
 /** People enterprise tasks can be assigned to. */
 export async function enterpriseTeam() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("platform_roles")
     .select("role, user:profiles!platform_roles_user_id_fkey(id, full_name, email, status)")
-    .in("role", ["sanady_admin", "enterprise_manager", "production_manager"]);
+    .in("role", ["sanady_admin", "enterprise_manager", "production_manager"]));
   return ((data ?? []) as unknown as Array<{ role: string; user: { id: string; full_name: string | null; email: string; status: string } }>)
     .filter((r) => r.user?.status === "active")
     .map((r) => ({ ...r.user, role: r.role }));
@@ -252,7 +253,7 @@ export async function enterpriseTeam() {
 /** What the current person may do (the database re-checks every action). */
 export async function enterpriseActor(viewer: Viewer) {
   const supabase = await createClient();
-  const { data } = await supabase.from("partnership_signatories").select("id").eq("user_id", viewer.id).is("revoked_at", null).maybeSingle();
+  const { data } = await checked(supabase.from("partnership_signatories").select("id").eq("user_id", viewer.id).is("revoked_at", null).maybeSingle());
   return { manager: viewer.isSanadyAdmin || viewer.platformRole === "enterprise_manager", signatory: Boolean(data) };
 }
 
@@ -260,14 +261,14 @@ export async function enterpriseActor(viewer: Viewer) {
 export async function purgeExpiredRequests() {
   // Server-side job: also runs without a signed-in person (daily schedule).
   const cutoff = new Date(Date.now() - 730 * 24 * 3600 * 1000).toISOString();
-  const { data } = await createAdminClient().from("enterprise_requests").select("id").in("status", ["declined", "withdrawn", "spam"]).lt("updated_at", cutoff).limit(50);
+  const { data } = await checked(createAdminClient().from("enterprise_requests").select("id").in("status", ["declined", "withdrawn", "spam"]).lt("updated_at", cutoff).limit(50));
   const ids = ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
   if (!ids.length) return 0;
   const admin = createAdminClient();
-  const { data: docs } = await admin.from("enterprise_documents").select("storage_path").in("request_id", ids);
+  const { data: docs } = await checked(admin.from("enterprise_documents").select("storage_path").in("request_id", ids));
   const paths = ((docs ?? []) as Array<{ storage_path: string }>).map((d) => d.storage_path);
   if (paths.length) await admin.storage.from("enterprise").remove(paths);
-  const { data: n } = await admin.rpc("purge_enterprise_requests", { p_ids: ids });
+  const { data: n } = await checked(admin.rpc("purge_enterprise_requests", { p_ids: ids }));
   return (n as number) ?? 0;
 }
 
@@ -294,7 +295,7 @@ export async function listTenants(filter: { status?: string } = {}) {
   const supabase = await createClient();
   let q = supabase.from("enterprise_tenants").select(TENANT_ROW).order("updated_at", { ascending: false }).limit(200);
   if (filter.status) q = q.eq("status", filter.status);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as unknown as TenantRow[];
 }
 
@@ -337,22 +338,22 @@ export interface TenantUsage {
 
 export async function getTenant(id: string) {
   const supabase = await createClient();
-  const { data: t } = await supabase
+  const { data: t } = await checked(supabase
     .from("enterprise_tenants")
     .select(
       `*, organization:partner_organizations(name), authorizer:profiles!enterprise_tenants_authorized_by_fkey(full_name, email),
        checker:profiles!enterprise_tenants_security_checked_by_fkey(full_name, email), exporter:profiles!enterprise_tenants_export_authorized_by_fkey(full_name, email)`,
     )
     .eq("id", id)
-    .maybeSingle();
+    .maybeSingle());
   if (!t) return null;
   const tenant = t as unknown as TenantDetail;
   const [{ data: checklist }, { data: usage }, { data: history }, { data: contacts }, { data: proposals }] = await Promise.all([
-    supabase.rpc("tenant_checklist", { p_tenant: id }),
-    supabase.rpc("tenant_usage", { p_tenant: id }),
-    supabase.from("enterprise_history").select(HISTORY_SELECT).eq("tenant_id", id).order("created_at", { ascending: false }),
-    supabase.from("partner_contacts").select("id, full_name, email").eq("organization_id", tenant.organization_id).order("full_name"),
-    supabase.from("enterprise_proposals").select("id, reference, title").eq("organization_id", tenant.organization_id).eq("status", "accepted"),
+    checked(supabase.rpc("tenant_checklist", { p_tenant: id })),
+    checked(supabase.rpc("tenant_usage", { p_tenant: id })),
+    checked(supabase.from("enterprise_history").select(HISTORY_SELECT).eq("tenant_id", id).order("created_at", { ascending: false })),
+    checked(supabase.from("partner_contacts").select("id, full_name, email").eq("organization_id", tenant.organization_id).order("full_name")),
+    checked(supabase.from("enterprise_proposals").select("id, reference, title").eq("organization_id", tenant.organization_id).eq("status", "accepted")),
   ]);
   return {
     tenant,
@@ -367,13 +368,13 @@ export async function getTenant(id: string) {
 /** The open workspace of a client, if any (client page). */
 export async function tenantForOrganization(organizationId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("enterprise_tenants")
     .select(TENANT_ROW)
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle());
   return (data ?? null) as unknown as TenantRow | null;
 }
 
@@ -381,8 +382,8 @@ export async function tenantForOrganization(organizationId: string) {
 export async function tenantFormOptions(organizationId: string) {
   const supabase = await createClient();
   const [{ data: contacts }, { data: proposals }] = await Promise.all([
-    supabase.from("partner_contacts").select("id, full_name, email").eq("organization_id", organizationId).order("full_name"),
-    supabase.from("enterprise_proposals").select("id, reference, title").eq("organization_id", organizationId).eq("status", "accepted"),
+    checked(supabase.from("partner_contacts").select("id, full_name, email").eq("organization_id", organizationId).order("full_name")),
+    checked(supabase.from("enterprise_proposals").select("id, reference, title").eq("organization_id", organizationId).eq("status", "accepted")),
   ]);
   return {
     contacts: (contacts ?? []) as Array<{ id: string; full_name: string; email: string | null }>,
@@ -413,7 +414,7 @@ export async function listContracts(filter: { status?: string; organization?: st
   let q = supabase.from("enterprise_contracts").select(CONTRACT_ROW).order("updated_at", { ascending: false }).limit(200);
   if (filter.status) q = q.eq("status", filter.status);
   if (filter.organization) q = q.eq("organization_id", filter.organization);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as unknown as ContractRow[];
 }
 
@@ -440,21 +441,21 @@ export interface ContractDetail extends ContractRow {
 
 export async function getContract(id: string) {
   const supabase = await createClient();
-  const { data: c } = await supabase
+  const { data: c } = await checked(supabase
     .from("enterprise_contracts")
     .select(
       `*, organization:partner_organizations(id, name), proposal:enterprise_proposals(id, reference), tenant:enterprise_tenants(id, display_name),
        approver:profiles!enterprise_contracts_approved_by_fkey(full_name, email), recorder:profiles!enterprise_contracts_signed_recorded_by_fkey(full_name, email)`,
     )
     .eq("id", id)
-    .maybeSingle();
+    .maybeSingle());
   if (!c) return null;
   const contract = c as unknown as ContractDetail;
   const [{ data: lines }, { data: docs }, { data: history }, { data: tenants }] = await Promise.all([
-    supabase.from("enterprise_contract_lines").select("id, category, label, quantity, unit, unit_price").eq("contract_id", id).order("position"),
-    supabase.from("enterprise_documents").select("id, kind, file_name, file_size, created_at").eq("contract_id", id).order("created_at"),
-    supabase.from("enterprise_history").select(HISTORY_SELECT).eq("contract_id", id).order("created_at", { ascending: false }),
-    supabase.from("enterprise_tenants").select("id, display_name").eq("organization_id", contract.organization_id).not("status", "in", "(closed,cancelled)"),
+    checked(supabase.from("enterprise_contract_lines").select("id, category, label, quantity, unit, unit_price").eq("contract_id", id).order("position")),
+    checked(supabase.from("enterprise_documents").select("id, kind, file_name, file_size, created_at").eq("contract_id", id).order("created_at")),
+    checked(supabase.from("enterprise_history").select(HISTORY_SELECT).eq("contract_id", id).order("created_at", { ascending: false })),
+    checked(supabase.from("enterprise_tenants").select("id, display_name").eq("organization_id", contract.organization_id).not("status", "in", "(closed,cancelled)")),
   ]);
   return {
     contract,
@@ -467,7 +468,7 @@ export async function getContract(id: string) {
 
 export async function contractForProposal(proposalId: string) {
   const supabase = await createClient();
-  const { data } = await supabase.from("enterprise_contracts").select("id, reference, status").eq("proposal_id", proposalId).maybeSingle();
+  const { data } = await checked(supabase.from("enterprise_contracts").select("id, reference, status").eq("proposal_id", proposalId).maybeSingle());
   return (data ?? null) as { id: string; reference: string; status: string } | null;
 }
 
@@ -488,9 +489,9 @@ export interface UsageRecord {
 export async function tenantUsageRecords(tenantId: string) {
   const supabase = await createClient();
   const [{ data: records }, { data: now }, { data: contracts }] = await Promise.all([
-    supabase.from("enterprise_usage_records").select("*").eq("tenant_id", tenantId).order("period", { ascending: false }).limit(24),
-    supabase.rpc("tenant_usage_now", { p_tenant: tenantId }),
-    supabase.from("enterprise_contracts").select("id, reference, status, pricing_model, learner_limit, storage_limit_gb").eq("tenant_id", tenantId).in("status", ["signed", "active", "renewal"]),
+    checked(supabase.from("enterprise_usage_records").select("*").eq("tenant_id", tenantId).order("period", { ascending: false }).limit(24)),
+    checked(supabase.rpc("tenant_usage_now", { p_tenant: tenantId })),
+    checked(supabase.from("enterprise_contracts").select("id, reference, status, pricing_model, learner_limit, storage_limit_gb").eq("tenant_id", tenantId).in("status", ["signed", "active", "renewal"])),
   ]);
   return {
     records: (records ?? []) as UsageRecord[],
@@ -501,7 +502,7 @@ export async function tenantUsageRecords(tenantId: string) {
 
 export async function enterpriseWatchlist() {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("enterprise_watchlist");
+  const { data } = await checked(supabase.rpc("enterprise_watchlist"));
   return (data ?? null) as {
     renewals: Array<{ id: string; reference: string; title: string; organization: string; end_on: string }>;
     overages: Array<{ id: string; tenant_id: string; tenant: string; period: string }>;
@@ -530,18 +531,18 @@ export interface AssessmentPolicy {
 
 /** The company space's assessment policy (team, approvers, the company's administrators). */
 export async function assessmentPolicy(tenantId: string) {
-  const { data } = await (await createClient())
+  const { data } = await checked((await createClient())
     .from("enterprise_assessment_policies")
     .select("*, approver:profiles!enterprise_assessment_policies_approved_by_fkey(full_name, email)")
     .eq("tenant_id", tenantId)
-    .maybeSingle();
+    .maybeSingle());
   return (data ?? null) as AssessmentPolicy | null;
 }
 
 /** The approved assessment policy of the company space behind an institution (its administrators read it). */
 export async function workspaceAssessmentPolicy(institutionId: string) {
   const supabase = await createClient();
-  const { data: t } = await supabase.from("enterprise_tenants").select("id").eq("institution_id", institutionId).maybeSingle();
+  const { data: t } = await checked(supabase.from("enterprise_tenants").select("id").eq("institution_id", institutionId).maybeSingle());
   if (!t) return null;
   const policy = await assessmentPolicy((t as { id: string }).id);
   return policy?.status === "approved" ? policy : null;
@@ -579,25 +580,25 @@ export interface DataDeletion {
 /** The deletion in progress for a company space (or the last one), and what still blocks it. */
 export async function tenantDeletion(tenantId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("data_deletions")
     .select("*, proposer:profiles!data_deletions_proposed_by_fkey(full_name, email), confirmer:profiles!data_deletions_confirmed_by_fkey(full_name, email)")
     .eq("tenant_id", tenantId)
     .order("proposed_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle());
   const deletion = (data ?? null) as DataDeletion | null;
   if (!deletion) return { deletion: null, blockers: [] as string[] };
-  const { data: blockers } = deletion.status === "proposed" ? await supabase.rpc("deletion_blockers", { p_deletion: deletion.id }) : { data: [] };
+  const { data: blockers } = deletion.status === "proposed" ? await checked(supabase.rpc("deletion_blockers", { p_deletion: deletion.id })) : { data: [] };
   return { deletion, blockers: ((blockers ?? []) as string[]) };
 }
 
 /** The company space behind an institution, when its end-of-contract export may be downloaded by this person. */
 export async function workspaceExport(institutionId: string) {
   const supabase = await createClient();
-  const { data: t } = await supabase.from("enterprise_tenants").select("id, deletion_due_on").eq("institution_id", institutionId).maybeSingle();
+  const { data: t } = await checked(supabase.from("enterprise_tenants").select("id, deletion_due_on").eq("institution_id", institutionId).maybeSingle());
   if (!t) return null;
   const tenant = t as { id: string; deletion_due_on: string | null };
-  const { data: ok } = await supabase.rpc("can_export_tenant", { p_tenant: tenant.id });
+  const { data: ok } = await checked(supabase.rpc("can_export_tenant", { p_tenant: tenant.id }));
   return ok ? tenant : null;
 }

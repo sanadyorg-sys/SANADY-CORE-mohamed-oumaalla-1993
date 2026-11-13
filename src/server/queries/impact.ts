@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { PlatformMeasure } from "@/lib/partnerships";
 import type { Attribution, ContributionKind, ContributionStage, InterventionField, MetricStatus, MetricType, ReportStatus } from "@/lib/partnerships";
+import { checked } from "@/lib/supabase/checked";
 
 /** Partnership phase 5. Reads go through RLS: partnership staff and approvers (2FA). */
 
@@ -40,7 +41,7 @@ export async function listMetrics(filter: { status?: string; organization?: stri
   let q = supabase.from("partnership_impact_metrics").select(METRIC_ROW).order("updated_at", { ascending: false }).limit(300);
   if (filter.status) q = q.eq("status", filter.status);
   if (filter.organization) q = q.eq("organization_id", filter.organization);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as unknown as MetricRow[];
 }
 
@@ -63,7 +64,7 @@ export async function listReports(filter: { organization?: string } = {}) {
     .order("updated_at", { ascending: false })
     .limit(200);
   if (filter.organization) q = q.eq("organization_id", filter.organization);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as unknown as ReportRow[];
 }
 
@@ -81,11 +82,11 @@ export interface ReportDetail extends ReportRow {
 
 export async function getReport(id: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("partnership_reports")
     .select("*, organization:partner_organizations(id, name), approver:profiles!partnership_reports_approved_by_fkey(full_name, email)")
     .eq("id", id)
-    .maybeSingle();
+    .maybeSingle());
   return (data ?? null) as unknown as ReportDetail | null;
 }
 
@@ -140,7 +141,7 @@ export interface Dashboard {
 
 export async function partnershipDashboard() {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("partnership_dashboard");
+  const { data } = await checked(supabase.rpc("partnership_dashboard"));
   return (data ?? null) as Dashboard | null;
 }
 
@@ -152,7 +153,7 @@ export interface PlatformScope {
 
 /** Schools and courses the team can choose from (partnership staff). */
 export async function platformScope(): Promise<PlatformScope> {
-  const { data } = await (await createClient()).rpc("platform_impact_scope");
+  const { data } = await checked((await createClient()).rpc("platform_impact_scope"));
   return (data as PlatformScope | null) ?? { institutions: [], courses: [], project_schools: {} };
 }
 
@@ -162,7 +163,7 @@ export async function platformRecounts(metricIds: string[]) {
   const out: Record<string, number> = {};
   await Promise.all(
     metricIds.map(async (id) => {
-      const { data } = await supabase.rpc("platform_metric_recount", { p_metric: id });
+      const { data } = await checked(supabase.rpc("platform_metric_recount", { p_metric: id }));
       if (typeof data === "number") out[id] = data;
     }),
   );
@@ -172,13 +173,13 @@ export async function platformRecounts(metricIds: string[]) {
 /** Financial contributions actually received per month (delivered or verified), by currency. */
 export async function contributionsMonthly(year: number) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("partnership_contributions")
     .select("amount_received, currency, received_on, stage")
     .eq("kind", "financial")
     .in("stage", ["delivered", "verified"])
     .gte("received_on", `${year}-01-01`)
-    .lte("received_on", `${year}-12-31`);
+    .lte("received_on", `${year}-12-31`));
   const out: Record<string, { verified: number[]; pending: number[] }> = {};
   for (const c of (data ?? []) as Array<{ amount_received: string | null; currency: string; received_on: string | null; stage: string }>) {
     if (!c.received_on || !c.amount_received) continue;

@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { approveAccessRequest, rejectAccessRequest } from "@/server/actions/access-requests";
 import { requireSanadyAdmin } from "@/server/auth";
+import { checked } from "@/lib/supabase/checked";
 
 export const metadata: Metadata = { title: "Demandes d’accès" };
 
@@ -38,13 +39,13 @@ export default async function AccessRequestsPage(props: PageProps<"/admin/demand
   const supabase = await createClient();
 
   const [{ data }, { count: pending }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("access_requests")
       .select("id, kind, first_name, last_name, email, job_title, subject_area, institution_name, city, message, status, created_at, handled_at, course:courses(title)")
       .eq("status", TABS[tab])
       .order("created_at", { ascending: tab === "attente" })
-      .limit(300),
-    supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      .limit(300)),
+    checked(supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending")),
   ]);
   const requests = (data ?? []) as unknown as AccessRequest[];
 

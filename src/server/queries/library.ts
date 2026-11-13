@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { LibraryKind, LibraryResource, LibraryStatus, SchoolLevel } from "@/lib/types";
+import { checked } from "@/lib/supabase/checked";
 
 export const LIBRARY_BUCKET = "library";
 export const LIBRARY_PAGE_SIZE = 24;
@@ -56,11 +57,11 @@ export async function listLibrary(filters: LibraryFilters) {
 /** Facet values present in the published library (subjects, categories, courses). */
 export async function libraryFacets() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("library_resources")
     .select("subject, category_id, category:course_categories(name), course:courses(id, title)")
     .eq("status", "published")
-    .limit(2000);
+    .limit(2000));
   const rows = (data ?? []) as unknown as Array<{
     subject: string | null;
     category_id: string | null;
@@ -79,7 +80,7 @@ export async function libraryFacets() {
 
 export async function getLibraryResource(id: string) {
   const supabase = await createClient();
-  const { data } = await supabase.from("library_resources").select(SELECT).eq("id", id).maybeSingle();
+  const { data } = await checked(supabase.from("library_resources").select(SELECT).eq("id", id).maybeSingle());
   return (data ?? null) as unknown as LibraryItem | null;
 }
 
@@ -130,9 +131,9 @@ export function parseLibraryFilters(sp: Record<string, string | string[] | undef
 export async function libraryEditorOptions() {
   const supabase = await createClient();
   const [{ data: categories }, { data: courses }, { data: subjects }] = await Promise.all([
-    supabase.from("course_categories").select("id, name").order("position").order("name"),
-    supabase.from("courses").select("id, title").neq("status", "archived").order("title"),
-    supabase.from("library_resources").select("subject").not("subject", "is", null).limit(2000),
+    checked(supabase.from("course_categories").select("id, name").order("position").order("name")),
+    checked(supabase.from("courses").select("id, title").neq("status", "archived").order("title")),
+    checked(supabase.from("library_resources").select("subject").not("subject", "is", null).limit(2000)),
   ]);
   return {
     categories: (categories ?? []) as Array<{ id: string; name: string }>,

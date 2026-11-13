@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { EnterpriseService, LineCategory, PlanStatus } from "@/lib/enterprise";
+import { checked } from "@/lib/supabase/checked";
 
 /** Reusable service plans (Enterprise staff and approvers, through RLS). */
 
@@ -42,11 +43,11 @@ export async function listPlans(filter: { status?: PlanStatus } = {}) {
   const supabase = await createClient();
   let q = supabase.from("enterprise_service_plans").select(ROW).order("name");
   if (filter.status) q = q.eq("status", filter.status);
-  const { data } = await q;
+  const { data } = await checked(q);
   return ((data ?? []) as unknown as PlanRow[]).map(sortLines);
 }
 
 export async function getPlan(id: string) {
-  const { data } = await (await createClient()).from("enterprise_service_plans").select(ROW).eq("id", id).maybeSingle();
+  const { data } = await checked((await createClient()).from("enterprise_service_plans").select(ROW).eq("id", id).maybeSingle());
   return data ? sortLines(data as unknown as PlanRow) : null;
 }

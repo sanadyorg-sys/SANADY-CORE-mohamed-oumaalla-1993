@@ -88,23 +88,14 @@ export async function approveAccessRequest(requestId: string): Promise<ActionSta
     return { ok: true, message: "Demande acceptée. Créez l’établissement puis invitez son administrateur." };
   }
 
+  // The request is taken and its invitation created in one step: a second
+  // approval at the same moment finds nothing pending and sends nothing.
   const { token, hash } = createInvitationToken();
-  const { data: invitationId, error } = await supabase.rpc("create_invitation", {
-    p_kind: "teacher",
-    p_email: request.email,
-    p_institution: null,
-    p_token_hash: hash,
-  });
+  const { data: approved, error } = await supabase.rpc("approve_teacher_access_request", { p_request: id.data, p_token_hash: hash });
   if (error) return { ok: false, message: errorMessage(error) };
+  const { invitation_id: invitationId, email } = approved as { invitation_id: string; email: string };
 
-  const { error: resolveError } = await supabase.rpc("resolve_access_request", {
-    p_request: id.data,
-    p_status: "approved",
-    p_invitation: invitationId,
-  });
-  if (resolveError) return { ok: false, message: errorMessage(resolveError) };
-
-  const result = await deliverInvitation({ invitationId: invitationId as string, kind: "teacher", email: request.email, token, institutionId: null });
+  const result = await deliverInvitation({ invitationId, kind: "teacher", email, token, institutionId: null });
   revalidatePath("/admin/demandes");
   revalidatePath("/admin/invitations");
   return result;

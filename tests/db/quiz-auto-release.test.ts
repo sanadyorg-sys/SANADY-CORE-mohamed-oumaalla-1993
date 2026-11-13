@@ -105,6 +105,28 @@ describe("automatic second set of attempts", () => {
     expect(await db.rpc<number>(teacher, "release_due_quiz_attempts", [])).toBe(0);
   });
 
+  it("keeps the replaced attempts in the report statistics", async () => {
+    const { mod, teacher, fail, age } = await setup();
+    for (let i = 0; i < 3; i++) await fail();
+    await age(8);
+    const s = await db.rpc<{ attempt_id: string }>(teacher, "start_quiz_attempt", [mod.quizId]);
+    await db.rpc(teacher, "submit_quiz_attempt", [s.attempt_id, JSON.stringify(answersFor(mod.questions, [true, true]))]);
+
+    const day = (ms: number) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "Africa/Casablanca" });
+    type Row = { id: string; learners: number; attempts: number; pass_rate: number; first_attempt_pass_rate: number };
+    const report = await db.rpc<{ quizzes: Row[] }>(admin, "admin_report", [day(Date.now() - 7 * 86400000), day(Date.now())]);
+    const row = report.quizzes.find((q) => q.id === mod.quizId)!;
+    // Three failures then a pass: four attempts, and the first attempt was a failure.
+    expect(row).toMatchObject({ learners: 1, attempts: 4, pass_rate: 1, first_attempt_pass_rate: 0 });
+
+    // Attempts cancelled by an administrator stay out of the statistics.
+    const other = await setup();
+    await other.fail();
+    await db.rpc(admin, "reset_quiz_attempts", [other.mod.quizId, other.teacher, "Erreur de manipulation"]);
+    const after = await db.rpc<{ quizzes: Row[] }>(admin, "admin_report", [day(Date.now() - 7 * 86400000), day(Date.now())]);
+    expect(after.quizzes.find((q) => q.id === other.mod.quizId)).toBeUndefined();
+  });
+
   it("is not callable without a session", async () => {
     expect(await db.rpcError(null, "release_due_quiz_attempts", [], "anon")).toMatch(/permission denied/i);
   });

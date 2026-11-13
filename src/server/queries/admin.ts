@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { checked } from "@/lib/supabase/checked";
 import type {
   Certificate,
   Course,
@@ -32,13 +33,13 @@ export async function getPlatformOverview() {
 
 export async function getSettings() {
   const supabase = await createClient();
-  const { data } = await supabase.from("platform_settings").select("*").maybeSingle();
+  const { data } = await checked(supabase.from("platform_settings").select("*").maybeSingle());
   return data as PlatformSettings;
 }
 
 export async function getCategories() {
   const supabase = await createClient();
-  const { data } = await supabase.from("course_categories").select("*").order("name");
+  const { data } = await checked(supabase.from("course_categories").select("*").order("name"));
   return (data ?? []) as CourseCategory[];
 }
 
@@ -56,9 +57,9 @@ export async function listInstitutions({ q, status }: { q?: string; status?: str
   if (q) query = query.or(`name.ilike.${ilikeTerm(q)},identifier.ilike.${ilikeTerm(q)},city.ilike.${ilikeTerm(q)}`);
   if (status === "active" || status === "suspended") query = query.eq("status", status);
   const [{ data: institutions }, { data: memberships }, { data: permissions }] = await Promise.all([
-    query,
-    supabase.from("institution_memberships").select("institution_id, role").eq("status", "active"),
-    supabase.from("course_permissions").select("institution_id").not("institution_id", "is", null).is("revoked_at", null),
+    checked(query),
+    checked(supabase.from("institution_memberships").select("institution_id, role").eq("status", "active")),
+    checked(supabase.from("course_permissions").select("institution_id").not("institution_id", "is", null).is("revoked_at", null)),
   ]);
   const members = (memberships ?? []) as Array<{ institution_id: string; role: string }>;
   const perms = (permissions ?? []) as Array<{ institution_id: string }>;
@@ -129,13 +130,13 @@ export async function listPeople({ q, status, page, pageSize }: { q?: string; st
     .range((page - 1) * pageSize, page * pageSize - 1);
   if (q) query = query.or(`full_name.ilike.${ilikeTerm(q)},email.ilike.${ilikeTerm(q)}`);
   if (status === "active" || status === "suspended") query = query.eq("status", status);
-  const { data, count } = await query;
+  const { data, count } = await checked(query);
   const rows = (data ?? []) as PersonRow[];
   const ids = rows.map((r) => r.id);
   const [{ data: roles }, { data: memberships }] = ids.length
     ? await Promise.all([
-        supabase.from("platform_roles").select("user_id").in("user_id", ids),
-        supabase.from("institution_memberships").select("user_id, institution:institutions(name)").in("user_id", ids).eq("status", "active"),
+        checked(supabase.from("platform_roles").select("user_id").in("user_id", ids)),
+        checked(supabase.from("institution_memberships").select("user_id, institution:institutions(name)").in("user_id", ids).eq("status", "active")),
       ])
     : [{ data: [] }, { data: [] }];
   const adminIds = new Set(((roles ?? []) as Array<{ user_id: string }>).map((r) => r.user_id));
@@ -185,11 +186,11 @@ export async function getPersonDetail(userId: string) {
 
 export async function listAdmins() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("platform_roles")
     .select("granted_at, user:profiles!platform_roles_user_id_fkey(id, full_name, email, status)")
     .eq("role", "sanady_admin")
-    .order("granted_at");
+    .order("granted_at"));
   return (data ?? []) as unknown as Array<{ granted_at: string; user: Pick<Profile, "id" | "full_name" | "email" | "status"> }>;
 }
 
@@ -197,12 +198,12 @@ export async function listAdmins() {
 export async function listPedagogicalTeam() {
   const supabase = await createClient();
   const [{ data }, { data: assignments }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("platform_roles")
       .select("role, granted_at, user:profiles!platform_roles_user_id_fkey(id, full_name, email, status, job_title)")
       .in("role", ["training_manager", "trainer", "partnership_coordinator", "partnership_manager", "enterprise_manager", "production_manager"])
-      .order("granted_at"),
-    supabase.from("course_trainers").select("user_id, course:courses(id, title)"),
+      .order("granted_at")),
+    checked(supabase.from("course_trainers").select("user_id, course:courses(id, title)")),
   ]);
   const byUser = new Map<string, Array<{ id: string; title: string }>>();
   for (const a of (assignments ?? []) as unknown as Array<{ user_id: string; course: { id: string; title: string } | null }>) {
@@ -229,7 +230,7 @@ export async function listCourses({ q, status, trainerId }: { q?: string; status
   const supabase = await createClient();
   let trainerCourses: string[] | null = null;
   if (trainerId) {
-    const { data } = await supabase.from("course_trainers").select("course_id").eq("user_id", trainerId);
+    const { data } = await checked(supabase.from("course_trainers").select("course_id").eq("user_id", trainerId));
     trainerCourses = ((data ?? []) as Array<{ course_id: string }>).map((r) => r.course_id);
     if (!trainerCourses.length) return [] as CourseListItem[];
   }
@@ -241,9 +242,9 @@ export async function listCourses({ q, status, trainerId }: { q?: string; status
   if (status === "draft" || status === "review" || status === "published" || status === "archived") query = query.eq("status", status);
   if (trainerCourses) query = query.in("id", trainerCourses);
   const [{ data: courses }, { data: modules }, { data: enrollments }] = await Promise.all([
-    query,
-    supabase.from("modules").select("course_id").is("archived_at", null),
-    supabase.from("enrollments").select("course_id"),
+    checked(query),
+    checked(supabase.from("modules").select("course_id").is("archived_at", null)),
+    checked(supabase.from("enrollments").select("course_id")),
   ]);
   const mods = (modules ?? []) as Array<{ course_id: string }>;
   const enr = (enrollments ?? []) as Array<{ course_id: string }>;
@@ -307,12 +308,12 @@ export async function getLessonEditorData(lessonId: string) {
   if (!lesson.data) return null;
   const moduleId = (lesson.data as { module_id: string }).module_id;
   // The module's evaluation, so the lesson page can point to it.
-  const { data: quizRow } = await supabase
+  const { data: quizRow } = await checked(supabase
     .from("quizzes")
     .select("id, title, questions(count)")
     .eq("module_id", moduleId)
     .is("questions.archived_at", null)
-    .maybeSingle();
+    .maybeSingle());
   const quiz = quizRow as { id: string; title: string; questions: Array<{ count: number }> } | null;
   return {
     lesson: lesson.data as Lesson & { module: { id: string; title: string } | null },
@@ -376,7 +377,7 @@ export async function listCertificates({ q, page, pageSize }: { q?: string; page
     .order("issued_at", { ascending: false })
     .range((page - 1) * pageSize, page * pageSize - 1);
   if (q) query = query.or(`certificate_number.ilike.${ilikeTerm(q)},recipient_name.ilike.${ilikeTerm(q)},course_title.ilike.${ilikeTerm(q)}`);
-  const { data, count } = await query;
+  const { data, count } = await checked(query);
   return { rows: (data ?? []) as Certificate[], total: count ?? 0 };
 }
 
@@ -399,6 +400,6 @@ export async function listAuditLogs({ entity, page, pageSize }: { entity?: strin
     .order("created_at", { ascending: false })
     .range((page - 1) * pageSize, page * pageSize - 1);
   if (entity) query = query.eq("entity_type", entity);
-  const { data, count } = await query;
+  const { data, count } = await checked(query);
   return { rows: (data ?? []) as unknown as AuditRow[], total: count ?? 0 };
 }

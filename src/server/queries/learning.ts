@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { checked } from "@/lib/supabase/checked";
 import type {
   Certificate,
   Course,
@@ -197,17 +198,17 @@ export async function getRecentActivity(userId: string, options: { courseId?: st
     .order("occurred_at", { ascending: false })
     .limit(options.limit ?? 8);
   if (options.courseId) query = query.eq("course_id", options.courseId);
-  const { data } = await query;
+  const { data } = await checked(query);
   return (data ?? []) as unknown as ActivityItem[];
 }
 
 export async function getCertificates(userId: string): Promise<Certificate[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("certificates")
     .select("*")
     .eq("user_id", userId)
-    .order("issued_at", { ascending: false });
+    .order("issued_at", { ascending: false }));
   return (data ?? []) as Certificate[];
 }
 
@@ -246,7 +247,7 @@ export async function getAttempts(userId: string, courseId?: string): Promise<At
     .order("started_at", { ascending: false })
     .limit(200);
   if (courseId) query = query.eq("course_id", courseId);
-  const { data } = await query;
+  const { data } = await checked(query);
   return (data ?? []) as unknown as AttemptListItem[];
 }
 

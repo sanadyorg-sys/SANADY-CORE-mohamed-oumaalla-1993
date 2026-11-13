@@ -14,6 +14,7 @@ import { unassignCourse } from "@/server/actions/institution";
 import { requireInstitutionViewer } from "@/server/auth";
 import { getAssignments, getAuthorizedCourses, getTeacherSummaries } from "@/server/queries/institution";
 import { wording } from "@/lib/enterprise";
+import { checked } from "@/lib/supabase/checked";
 
 export const metadata: Metadata = { title: "Affectations" };
 
@@ -32,14 +33,14 @@ export default async function CourseAssignmentPage(props: PageProps<"/etablissem
   if (!course) notFound();
 
   const [{ data: details }, { data: enrollments }] = await Promise.all([
-    supabase.from("courses").select("objectives, target_audience").eq("id", courseId).maybeSingle(),
-    assignments.length
+    checked(supabase.from("courses").select("objectives, target_audience").eq("id", courseId).maybeSingle()),
+    checked(assignments.length
       ? supabase
           .from("enrollments")
           .select("user_id, status, started_at, last_activity_at")
           .eq("course_id", courseId)
           .in("user_id", assignments.map((a) => a.user_id))
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [] })),
   ]);
   const info = details as { objectives: string[]; target_audience: string } | null;
   const enrollmentByUser = new Map(

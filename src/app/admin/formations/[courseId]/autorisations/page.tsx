@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { grantCourseToInstitution, revokeCourseFromInstitution, revokeCourseFromUser } from "@/server/actions/courses";
 import { requireSanadyAdmin } from "@/server/auth";
+import { checked } from "@/lib/supabase/checked";
 
 export const metadata: Metadata = { title: "Autorisations" };
 
@@ -18,15 +19,15 @@ export default async function CourseAuthorizationsPage(props: PageProps<"/admin/
   await requireSanadyAdmin();
   const supabase = await createClient();
   const [{ data: perms }, { data: institutions }, { data: course }, { data: workspaces }] = await Promise.all([
-    supabase
+    checked(supabase
       .from("course_permissions")
       .select("id, granted_at, institution_id, user_id, institution:institutions(id, name), user:profiles!course_permissions_user_id_fkey(id, full_name, email)")
       .eq("course_id", courseId)
       .is("revoked_at", null)
-      .order("granted_at", { ascending: false }),
-    supabase.from("institutions").select("id, name, kind").eq("status", "active").order("name"),
-    supabase.from("courses").select("status, ownership, owner_institution_id, tenant_private").eq("id", courseId).maybeSingle(),
-    supabase.rpc("enterprise_workspaces"),
+      .order("granted_at", { ascending: false })),
+    checked(supabase.from("institutions").select("id, name, kind").eq("status", "active").order("name")),
+    checked(supabase.from("courses").select("status, ownership, owner_institution_id, tenant_private").eq("id", courseId).maybeSingle()),
+    checked(supabase.rpc("enterprise_workspaces")),
   ]);
   type Perm = {
     id: string;

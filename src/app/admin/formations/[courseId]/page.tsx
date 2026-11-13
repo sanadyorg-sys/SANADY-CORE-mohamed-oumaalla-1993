@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Course } from "@/lib/types";
 import { requireStaff } from "@/server/auth";
 import { getCategories } from "@/server/queries/admin";
+import { checked } from "@/lib/supabase/checked";
 
 export const metadata: Metadata = { title: "Informations de la formation" };
 
@@ -14,7 +15,7 @@ export default async function CourseInfoPage(props: PageProps<"/admin/formations
   const { courseId } = await props.params;
   const viewer = await requireStaff();
   const supabase = await createClient();
-  const [{ data }, categories] = await Promise.all([supabase.from("courses").select("*").eq("id", courseId).maybeSingle(), getCategories()]);
+  const [{ data }, categories] = await Promise.all([checked(supabase.from("courses").select("*").eq("id", courseId).maybeSingle()), getCategories()]);
   const course = data as Course | null;
   if (!course) notFound();
 

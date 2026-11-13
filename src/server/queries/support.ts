@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { SupportCategory, SupportPriority, SupportStatus } from "@/lib/enterprise";
+import { checked } from "@/lib/supabase/checked";
 
 /**
  * Support requests. Reads go through RLS: the Enterprise team sees every
@@ -36,7 +37,7 @@ export async function listSupportRequests(filter: { institution?: string; status
   if (filter.institution) q = q.eq("institution_id", filter.institution);
   if (filter.status === "active") q = q.in("status", ["open", "in_progress", "waiting_client"]);
   else if (filter.status) q = q.eq("status", filter.status);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as unknown as SupportRow[];
 }
 
@@ -51,17 +52,17 @@ export interface SupportMessage {
 
 export async function getSupportRequest(id: string) {
   const supabase = await createClient();
-  const { data } = await supabase.from("enterprise_support_requests").select(ROW).eq("id", id).maybeSingle();
+  const { data } = await checked(supabase.from("enterprise_support_requests").select(ROW).eq("id", id).maybeSingle());
   if (!data) return null;
   const request = data as unknown as SupportRow;
   const [{ data: messages }, { data: opener }] = await Promise.all([
-    supabase.from("enterprise_support_messages").select("id, from_team, internal, body, created_at, author_id").eq("request_id", id).order("created_at"),
-    supabase.from("enterprise_support_requests").select("opener:profiles!enterprise_support_requests_opened_by_fkey(full_name, email)").eq("id", id).maybeSingle(),
+    checked(supabase.from("enterprise_support_messages").select("id, from_team, internal, body, created_at, author_id").eq("request_id", id).order("created_at")),
+    checked(supabase.from("enterprise_support_requests").select("opener:profiles!enterprise_support_requests_opened_by_fkey(full_name, email)").eq("id", id).maybeSingle()),
   ]);
   // Names are looked up separately: each side only sees the profiles it may see.
   const rows = (messages ?? []) as Array<Omit<SupportMessage, "author"> & { author_id: string | null }>;
   const ids = [...new Set(rows.map((m) => m.author_id).filter(Boolean))] as string[];
-  const { data: people } = ids.length ? await supabase.from("profiles").select("id, full_name, email").in("id", ids) : { data: [] };
+  const { data: people } = ids.length ? await checked(supabase.from("profiles").select("id, full_name, email").in("id", ids)) : { data: [] };
   const byId = new Map(((people ?? []) as Array<{ id: string; full_name: string | null; email: string }>).map((p) => [p.id, p]));
   return {
     request,
@@ -73,14 +74,14 @@ export async function getSupportRequest(id: string) {
 /** Support terms of the company's contract, for the team. */
 export async function supportCommitments(tenantId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await checked(supabase
     .from("enterprise_contracts")
     .select("reference, support_commitments")
     .eq("tenant_id", tenantId)
     .in("status", ["signed", "active", "renewal"])
     .not("support_commitments", "is", null)
     .limit(1)
-    .maybeSingle();
+    .maybeSingle());
   return (data ?? null) as { reference: string; support_commitments: string } | null;
 }
 
@@ -96,12 +97,12 @@ export interface SupportOverview {
 }
 
 export async function supportOverview() {
-  const { data } = await (await createClient()).rpc("support_overview");
+  const { data } = await checked((await createClient()).rpc("support_overview"));
   return (data ?? null) as SupportOverview | null;
 }
 
 /** The company space's support level (company administrators read their own tenant). */
 export async function tenantSupportLevel(institutionId: string) {
-  const { data } = await (await createClient()).from("enterprise_tenants").select("support_level").eq("institution_id", institutionId).maybeSingle();
+  const { data } = await checked((await createClient()).from("enterprise_tenants").select("support_level").eq("institution_id", institutionId).maybeSingle());
   return ((data as { support_level: string | null } | null)?.support_level ?? null) as string | null;
 }

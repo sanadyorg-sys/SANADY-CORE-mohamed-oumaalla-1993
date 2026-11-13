@@ -6,6 +6,7 @@ import { Card, CardBody, PageHeader } from "@/components/ui/surface";
 import { createClient } from "@/lib/supabase/server";
 import { requireStaff } from "@/server/auth";
 import { getNewsCategories } from "@/server/queries/news";
+import { checked } from "@/lib/supabase/checked";
 
 export const metadata: Metadata = { title: "Catégories d’actualités" };
 
@@ -14,7 +15,7 @@ export default async function NewsCategoriesPage() {
   const supabase = await createClient();
   const [categories, { data }] = await Promise.all([
     getNewsCategories(),
-    supabase.from("news_articles").select("category_id").not("category_id", "is", null).limit(5000),
+    checked(supabase.from("news_articles").select("category_id").not("category_id", "is", null).limit(5000)),
   ]);
   const usage: Record<string, number> = {};
   for (const r of (data ?? []) as Array<{ category_id: string }>) usage[r.category_id] = (usage[r.category_id] ?? 0) + 1;

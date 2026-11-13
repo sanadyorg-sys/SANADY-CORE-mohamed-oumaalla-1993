@@ -100,9 +100,15 @@ describe("deleting a company space's data", () => {
     expect(await db.rpc(null, "execute_due_deletions", [], "service_role")).toEqual([]);
     await db.rpc(manager, "set_deletion_hold", [deletion, ""]);
 
-    const out = await db.rpc<Array<{ files: string[] }>>(null, "execute_due_deletions", [], "service_role");
+    // Profile photos: the deleted account's files are listed, never those of someone who stays.
+    await db.sql(`insert into storage.buckets (id, name) values ('avatars', 'avatars') on conflict (id) do nothing`);
+    await db.sql(`insert into storage.objects (bucket_id, name) values ('avatars', $1), ('avatars', $2), ('avatars', $3)`,
+      [`${employee}/avatar-1.jpg`, `${employee}/avatar-2.jpg`, `${teacherElsewhere}/avatar-1.jpg`]);
+
+    const out = await db.rpc<Array<{ files: string[]; avatars: string[] }>>(null, "execute_due_deletions", [], "service_role");
     expect(out).toHaveLength(1);
     expect(out[0]!.files).toContain(`${course}/video.mp4`);
+    expect(out[0]!.avatars.sort()).toEqual([`${employee}/avatar-1.jpg`, `${employee}/avatar-2.jpg`]);
     const [d] = await db.sql<{ status: string; certificate: { deleted: Record<string, number>; confirmed_by: string } }>(`select status, certificate from public.data_deletions where id = $1`, [deletion]);
     expect(d!.status).toBe("executed");
     expect(d!.certificate.deleted).toMatchObject({ accounts: 1, memberships: 1, courses: 1 });

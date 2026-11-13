@@ -6,6 +6,7 @@ import { AttemptQuestions, AttemptSummary } from "@/components/learning/attempt-
 import { createClient } from "@/lib/supabase/server";
 import type { AttemptResult } from "@/lib/types";
 import { requireStaff } from "@/server/auth";
+import { checked } from "@/lib/supabase/checked";
 
 export const metadata: Metadata = { title: "Détail d’une évaluation" };
 
@@ -15,7 +16,7 @@ export default async function AdminAttemptPage(props: PageProps<"/admin/suivi/te
   const supabase = await createClient();
   const [{ data, error }, { data: owner }] = await Promise.all([
     supabase.rpc("get_attempt_result", { p_attempt: attemptId }),
-    supabase.from("quiz_attempts").select("user_id").eq("id", attemptId).maybeSingle(),
+    checked(supabase.from("quiz_attempts").select("user_id").eq("id", attemptId).maybeSingle()),
   ]);
   if (error || !data) notFound();
   const result = data as AttemptResult;

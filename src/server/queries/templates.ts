@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { TemplateCategory } from "@/lib/partnerships";
+import { checked } from "@/lib/supabase/checked";
 
 /** Communication templates (partnership staff, through RLS). */
 
@@ -18,7 +19,7 @@ export async function listTemplates({ archived = false } = {}) {
   const supabase = await createClient();
   let q = supabase.from("partnership_templates").select("id, category, title, subject, body, archived_at, updated_at").order("category").order("title");
   q = archived ? q.not("archived_at", "is", null) : q.is("archived_at", null);
-  const { data } = await q;
+  const { data } = await checked(q);
   return (data ?? []) as TemplateRow[];
 }
 
@@ -26,9 +27,9 @@ export async function listTemplates({ archived = false } = {}) {
 export async function organizationReferences(organizationId: string) {
   const supabase = await createClient();
   const [{ data: apps }, { data: agreements }, { data: reports }] = await Promise.all([
-    supabase.from("partnership_applications").select("reference").eq("organization_id", organizationId),
-    supabase.from("partnership_agreements").select("reference").eq("organization_id", organizationId),
-    supabase.from("partnership_reports").select("reference").eq("organization_id", organizationId).in("status", ["approved", "shared"]),
+    checked(supabase.from("partnership_applications").select("reference").eq("organization_id", organizationId)),
+    checked(supabase.from("partnership_agreements").select("reference").eq("organization_id", organizationId)),
+    checked(supabase.from("partnership_reports").select("reference").eq("organization_id", organizationId).in("status", ["approved", "shared"])),
   ]);
   return [
     ...((apps ?? []) as Array<{ reference: string }>).map((r) => ({ value: r.reference, label: `${r.reference} (candidature)` })),
